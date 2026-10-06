@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cake'd By Mone'T</title>
+  <meta name="description" content="Cupcakes, brownies, mini cakes & custom orders. Sweet treats, big happiness. Call/text 386-965-2713." />
+  <meta name="theme-color" content="#0a0610" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&family=Pacifico&family=Yellowtail&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <a href="#top" class="nav-logo"><img src="assets/logo.png" alt="Cake'd by Mone'T" /></a>
+    <nav>
+      <a href="#cupcakes">Cupcakes</a>
+      <a href="#brownies">Brownies</a>
+      <a href="#minicakes">Mini Cakes</a>
+      <a href="#order" class="btn btn-small">Order Now <span class="cart-count" id="navCount" hidden>0</span></a>
+    </nav>
+  </header>
+
+  <!-- HERO: Higgsfield AI video plays here. The neon cake builds itself until the video loads. -->
+  <section class="hero" id="top">
+    <video class="hero-video" id="heroVideo" autoplay muted loop playsinline preload="auto" poster="assets/hero-poster.jpg">
+      <source src="assets/hero-cake-build.mp4" type="video/mp4" />
+    </video>
+    <div class="sparkle-field" aria-hidden="true"></div>
+
+    <div class="cake-stage" id="cakeFallback" aria-hidden="true">
+      <div class="cake building">
+        <div class="sparkles"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="candle"><span class="flame"></span></div>
+        <div class="tier t3"><span class="drip"></span></div>
+        <div class="tier t2"><span class="drip"></span></div>
+        <div class="tier t1"><span class="drip"></span></div>
+        <div class="board"></div>
+      </div>
+    </div>
+
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <h1><img src="assets/logo.png" alt="Cake'd by Mone'T" class="hero-logo" /></h1>
+      <p class="services">Cupcakes <b>|</b> Brownies <b>|</b> Mini Cakes <b>|</b> Custom Orders</p>
+      <p class="tagline">♡ Sweet treats. Big happiness. ♡</p>
+      <p class="lede">Fresh <span>♥</span> Homemade <span>♥</span> Delicious</p>
+      <div class="hero-ctas">
+        <a href="#order" class="btn">Order Now ♡</a>
+        <a href="#cupcakes" class="btn btn-ghost">See the Menu</a>
+      </div>
+    </div>
+    <div class="drips bottom" aria-hidden="true"></div>
+  </section>
+
+  <section class="menu-section" id="cupcakes">
+    <span class="side-script left">Good Cupcakes<br />Better Days ♡</span>
+    <span class="side-script right">Life is Sweeter<br />with Cupcakes ♡</span>
+    <div class="section-head">
+      <h2 class="neon-script">Cupcakes</h2>
+      <p class="kicker">Fresh <span>♥</span> Homemade <span>♥</span> Delicious</p>
+    </div>
+    <div class="price-bar pink">
+      <div><strong>$3</strong><small>each</small></div>
+      <div><small>6 for</small><strong>$18</strong></div>
+      <div><small>12 for</small><strong>$36</strong></div>
+    </div>
+    <div class="flavor-grid" data-menu="cupcakes"></div>
+  </section>
+
+  <section class="menu-section" id="brownies">
+    <span class="side-script left">Sweet Treats<br />Bigger Happiness ♡</span>
+    <span class="side-script right">Made<br />With Love ♡</span>
+    <div class="section-head">
+      <h2 class="neon-script">Brownies</h2>
+      <p class="banner">♡ Same great flavors. Now in brownies! ♡</p>
+    </div>
+    <div class="price-duo">
+      <div class="price-bar pink">
+        <h3>Regular Brownies</h3>
+        <div><strong>$4</strong><small>each</small></div>
+        <div><small>4 for</small><strong>$15</strong></div>
+        <div><small>12 for</small><strong>$40</strong></div>
+      </div>
+      <div class="price-bar lime">
+        <h3>Loaded Brownies</h3>
+        <p class="sub">Cookies &amp; Cream | Biscoff</p>
+        <div><strong>$6</strong><small>each</small></div>
+        <div><small>4 for</small><strong>$22</strong></div>
+        <div><small>12 for</small><strong>$60</strong></div>
+      </div>
+    </div>
+    <div class="flavor-grid" data-menu="brownies"></div>
+  </section>
+
+  <section class="menu-section" id="minicakes">
+    <span class="side-script left">Small Treats<br />Big Happiness ♡</span>
+    <span class="side-script right">Made<br />With Love ♡</span>
+    <div class="section-head">
+      <h2 class="neon-script">Mini Cakes</h2>
+      <p class="banner">♡ Same great flavors. Now in mini cakes! ♡</p>
+    </div>
+    <div class="price-bar cyan">
+      <div><strong>$5</strong><small>each</small></div>
+      <div><small>6 for</small><strong>$35</strong></div>
+      <div><small>12 for</small><strong>$60</strong></div>
+    </div>
+    <div class="flavor-grid" data-menu="minicakes"></div>
+  </section>
+
+  <section class="custom">
+    <div class="custom-inner">
+      <h2 class="neon-script small">Custom Orders</h2>
+      <p class="occasions">Birthdays <span>♡</span> Special Occasions <span>♡</span> Just Because <span>♡</span> &amp; More!</p>
+      <p>Don't see your flavor? Ask for <strong>any flavor that's not listed!</strong> Dream it up, and Mone'T will bake it.</p>
+      <a href="#order" class="btn">Start a Custom Order ♡</a>
+    </div>
+  </section>
+
+  <section class="order" id="order">
+    <div class="section-head">
+      <h2 class="neon-script">Order Now</h2>
+      <p class="kicker">A little cupcake goes a long way ♡</p>
+    </div>
+
+    <div class="order-wrap">
+      <form id="orderForm" class="form" novalidate>
+        <h3>Your Order</h3>
+        <ul class="cart" id="cart"><li class="empty">Tap <b>+ Add</b> on any treat above, or add it here.</li></ul>
+        <div class="add-row">
+          <select id="addItem" aria-label="Treat"></select>
+          <select id="addFlavor" aria-label="Flavor"></select>
+          <input id="addQty" type="number" min="1" value="1" aria-label="Quantity" />
+          <button type="button" class="btn btn-small" id="addBtn">+ Add</button>
+        </div>
+        <p class="total">Estimated total: <strong id="total">$0</strong><small>Bundle pricing applied. Mone'T will confirm your final price.</small></p>
+
+        <div class="fields">
+          <label>Name<input name="name" required autocomplete="name" /></label>
+          <label>Pickup / event date<input name="date" type="date" required /></label>
+          <label class="full">Notes or custom request<textarea name="notes" rows="3" placeholder="Colors, theme, a flavor that's not listed, number of servings…"></textarea></label>
+        </div>
+        <button class="btn btn-block" type="submit">Text My Order ♡</button>
+        <p class="form-msg" id="formMsg" role="status"></p>
+      </form>
+
+      <aside class="contact">
+        <a class="contact-card pink" href="tel:+13869652713">
+          <span class="ic">📞</span><b>Call / Text</b><span>386-965-2713</span>
+        </a>
+        <a class="contact-card purple" id="dmLink" target="_blank" rel="noopener">
+          <span class="ic">💬</span><b>DM Us</b><span>for orders &amp; inquiries</span>
+        </a>
+        <a class="contact-card cyan" id="igLink" target="_blank" rel="noopener">
+          <span class="ic">📸</span><b>Follow</b><span>for sweet updates</span>
+        </a>
+        <div class="pay">
+          <p>We accept</p>
+          <span class="chip cash">$ Cash App</span>
+          <span class="chip apple"> Apple Pay</span>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <footer>
+    <div class="drips top" aria-hidden="true"></div>
+    <img src="assets/logo.png" alt="Cake'd by Mone'T" class="foot-logo" />
+    <p class="services">Cupcakes <b>|</b> Brownies <b>|</b> Mini Cakes <b>|</b> Custom Orders</p>
+    <p><a href="tel:+13869652713">386-965-2713</a> · <a id="igFooter" target="_blank" rel="noopener"></a></p>
+    <p class="small">© <span id="yr"></span> Cake'd By Mone'T · Made with love ♡</p>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="script.js"></script>
+</body>
+</html>
