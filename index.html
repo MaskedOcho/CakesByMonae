@@ -138,10 +138,16 @@
 
         <div class="fields">
           <label>Name<input name="name" required autocomplete="name" /></label>
-          <label>Pickup / event date<input name="date" type="date" required /></label>
+          <label>Phone<input name="phone" type="tel" required autocomplete="tel" /></label>
+          <label class="full">Email<input name="email" type="email" required autocomplete="email" /></label>
+          <label>Pickup date<input name="date" type="date" required /></label>
+          <label>Pickup time<input name="time" type="time" required /></label>
           <label class="full">Notes or custom request<textarea name="notes" rows="3" placeholder="Colors, theme, a flavor that's not listed, number of servings…"></textarea></label>
         </div>
-        <button class="btn btn-block" type="submit">Text My Order ♡</button>
+        <p class="notice rush" id="rushNote" role="status" hidden></p>
+        <p class="notice" id="noticeNote"></p>
+        <button class="btn btn-block" type="submit">Request My Order ♡</button>
+        <button class="link-btn" type="button" id="textBtn">Prefer to text it instead?</button>
         <p class="form-msg" id="formMsg" role="status"></p>
       </form>
 
@@ -159,6 +165,7 @@
           <p>We accept</p>
           <span class="chip cash">$ Cash App</span>
           <span class="chip apple"> Apple Pay</span>
+          <span class="chip card">Card via Stripe</span>
         </div>
       </aside>
     </div>
@@ -172,7 +179,17 @@
     <p class="small">© <span id="yr"></span> Cake'd By Mone'T · Made with love ♡</p>
   </footer>
 
+  <dialog class="request" id="requestDialog" aria-labelledby="requestTitle">
+    <div class="request-head">
+      <h3 id="requestTitle">Almost done! Check your info and tap Submit ♡</h3>
+      <button type="button" class="rm" id="requestClose" aria-label="Close">✕</button>
+    </div>
+    <iframe id="requestFrame" title="Order request form"></iframe>
+    <p class="request-foot">Form not loading? <a id="requestTab" target="_blank" rel="noopener">Open it in a new tab</a></p>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="menu.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

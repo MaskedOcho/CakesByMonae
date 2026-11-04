@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Review Order · Cake'd By Mone'T</title>
+  <meta name="theme-color" content="#0a0610" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&family=Pacifico&family=Yellowtail&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    main { max-width: 760px; margin: 0 auto; padding: 2rem 1rem 4rem; display: grid; gap: 1.5rem; }
+    .top { text-align: center; }
+    .top img { width: min(260px, 70%); margin: 0 auto; }
+    .top h1 { font-family: var(--hand); font-weight: 400; font-size: 2.4rem; color: var(--pink-hot); }
+    .form h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .2em; color: var(--muted); margin-bottom: .8rem; }
+    dl { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1rem; }
+    dt { color: var(--muted); font-weight: 700; }
+    dd { font-weight: 700; overflow-wrap: anywhere; }
+    dd a { color: var(--cyan); }
+    .cart .price { font-weight: 800; color: var(--lime); }
+    .note { white-space: pre-wrap; background: rgba(255,255,255,.05); border-radius: 12px; padding: .8rem 1rem; }
+    .sums { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .sums label { display: flex; flex-direction: column; gap: .35rem; font-weight: 700; font-size: .9rem; }
+    .sums label[hidden] { display: none; }
+    .money-row { display: flex; justify-content: space-between; font-weight: 700; margin-top: .6rem; }
+    .money-row strong { color: var(--lime); font-size: 1.4rem; }
+    .steps { display: grid; gap: 1rem; counter-reset: step; }
+    .step { counter-increment: step; display: grid; gap: .6rem; }
+    .step > b::before { content: counter(step) ". "; color: var(--pink-hot); }
+    .step small { color: var(--muted); }
+    .row { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .row .btn { flex: 1 1 160px; }
+    .form textarea { min-height: 9rem; }
+    .decline { border-color: #4a2a5c; box-shadow: none; }
+    .btn-dim { background: transparent; border-color: #8a6a9c; box-shadow: none; }
+    .error { text-align: center; color: var(--muted); }
+    .rush-flag { background: var(--yellow); color: #2a2000; font-weight: 800; border-radius: 12px; padding: .6rem 1rem; text-align: center; margin-bottom: 1.5rem; }
+    @media (max-width: 560px) { .sums { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="top">
+      <img src="assets/logo.png" alt="Cake'd by Mone'T" />
+      <h1>Order Request</h1>
+    </header>
+
+    <p class="form error" id="missing" hidden>This review link is missing its order. Open it from the "Review Link" in your FormNX email.</p>
+
+    <div id="order" hidden>
+      <p class="rush-flag" id="rushFlag" hidden></p>
+      <section class="form">
+        <h2>Customer</h2>
+        <dl>
+          <dt>Name</dt><dd id="cName"></dd>
+          <dt>Phone</dt><dd><a id="cPhone"></a></dd>
+          <dt>Email</dt><dd><a id="cEmail"></a></dd>
+          <dt>Pickup</dt><dd id="cPickup"></dd>
+        </dl>
+      </section>
+
+      <section class="form" style="margin-top:1.5rem">
+        <h2>Order</h2>
+        <ul class="cart" id="items"></ul>
+        <p class="note" id="notes" hidden></p>
+        <div class="money-row"><span>Menu estimate</span><strong id="estimate"></strong></div>
+      </section>
+
+      <section class="form" style="margin-top:1.5rem">
+        <h2>Approve</h2>
+        <div class="steps">
+          <div class="step">
+            <b>Set the final price</b>
+            <div class="sums">
+              <label>Order price ($)<input id="finalTotal" type="number" min="0" step="0.01" /></label>
+              <label id="rushFeeWrap" hidden>Rush fee ($)<input id="rushFee" type="number" min="0" step="0.01" value="0" /></label>
+              <label>Deposit (%)<input id="depositPct" type="number" min="0" max="100" step="1" /></label>
+            </div>
+            <div class="money-row"><span>Final total</span><span id="totalAmt"></span></div>
+            <div class="money-row"><span>Deposit due now</span><strong id="depositAmt"></strong></div>
+            <div class="money-row"><span>Due at pickup</span><span id="balanceAmt"></span></div>
+          </div>
+          <div class="step">
+            <b>Make a Stripe payment link for the deposit</b>
+            <small>Opens your Stripe dashboard. Create a payment link (or invoice) for the deposit amount, then copy its link.</small>
+            <div class="row">
+              <a class="btn btn-ghost" href="https://dashboard.stripe.com/payment-links/create" target="_blank" rel="noopener">Open Stripe ↗</a>
+              <button class="btn btn-ghost" type="button" id="copyDesc">Copy description</button>
+            </div>
+          </div>
+          <div class="step">
+            <b>Paste the payment link</b>
+            <input id="payLink" type="url" placeholder="https://buy.stripe.com/…" />
+          </div>
+          <div class="step">
+            <b>Send the approval</b>
+            <textarea id="approveMsg"></textarea>
+            <div class="row">
+              <button class="btn" type="button" data-send="approve" data-via="sms">Text approval ♡</button>
+              <button class="btn" type="button" data-send="approve" data-via="email">Email approval</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="form decline" style="margin-top:1.5rem">
+        <h2>Or decline</h2>
+        <textarea id="declineMsg"></textarea>
+        <div class="row" style="margin-top:.8rem">
+          <button class="btn btn-dim" type="button" data-send="decline" data-via="sms">Text decline</button>
+          <button class="btn btn-dim" type="button" data-send="decline" data-via="email">Email decline</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="menu.js"></script>
+  <script>
+    let o;
+    try { o = decodeOrder(location.hash.slice(1)); } catch {}
+
+    if (!o || !o.n) {
+      $("#missing").hidden = false;
+    } else {
+      $("#order").hidden = false;
+      const lines = (o.i || []).filter(([p]) => PRODUCTS[p]).map(([p, f, q]) => ({ p, f, q: Math.max(1, q | 0) }));
+      const first = o.n.split(" ")[0];
+      const dateText = new Date(o.d + "T12:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+      const pickup = `${dateText}${o.t ? ` at ${prettyTime(o.t)}` : ""}`;
+      const estimate = cartTotal(lines); // recomputed from the menu, not taken from the link
+      const toCents = (n) => (Math.round(n * 100) / 100).toFixed(2);
+
+      $("#cName").textContent = o.n;
+      $("#cPhone").textContent = o.ph;
+      $("#cPhone").href = `tel:${o.ph.replace(/[^\d+]/g, "")}`;
+      $("#cEmail").textContent = o.e;
+      $("#cEmail").href = `mailto:${o.e}`;
+      $("#cPickup").textContent = pickup;
+
+      lines.forEach((l) => {
+        const li = document.createElement("li");
+        li.innerHTML = `${l.f === CUSTOM[0] ? "" : `<img src="${PRODUCTS[l.p].img(l.f)}" alt="" />`}<span class="name"></span>`;
+        li.querySelector(".name").textContent = lineText(l);
+        $("#items").append(li);
+      });
+      if (!lines.length) $("#items").innerHTML = `<li class="empty">Custom order, see notes</li>`;
+      if (o.no) { $("#notes").hidden = false; $("#notes").textContent = o.no; }
+      $("#estimate").textContent = money(estimate);
+
+      $("#finalTotal").value = estimate;
+      if (o.r) {
+        $("#rushFlag").hidden = false;
+        $("#rushFlag").textContent = `Rush order: requested with under ${CONFIG.noticeDays} days' notice`;
+        $("#rushFeeWrap").hidden = false;
+      }
+      $("#depositPct").value = CONFIG.depositPercent;
+
+      const itemList = lines.map((l) => `• ${lineText(l)}`).join("\n") || "• Custom order";
+      const amounts = () => {
+        const fee = o.r ? Math.max(0, +$("#rushFee").value || 0) : 0;
+        const total = Math.max(0, +$("#finalTotal").value || 0) + fee;
+        const deposit = total * Math.min(100, Math.max(0, +$("#depositPct").value || 0)) / 100;
+        return { fee, total, deposit, balance: total - deposit };
+      };
+
+      // Keep the message in sync with the price fields, but don't clobber her own edits
+      let approveEdited = false;
+      $("#approveMsg").addEventListener("input", () => (approveEdited = true));
+      function refresh() {
+        const { fee, total, deposit, balance } = amounts();
+        $("#totalAmt").textContent = `$${toCents(total)}`;
+        $("#depositAmt").textContent = `$${toCents(deposit)}`;
+        $("#balanceAmt").textContent = `$${toCents(balance)}`;
+        const link = $("#payLink").value.trim() || "[payment link]";
+        if (approveEdited) {
+          if (link !== "[payment link]") $("#approveMsg").value = $("#approveMsg").value.replace("[payment link]", link);
+          return;
+        }
+        $("#approveMsg").value = [
+          `Hi ${first}! Your Cake'd By Mone'T order is APPROVED 🎉`,
+          "",
+          itemList,
+          `Pickup: ${pickup}`,
+          "",
+          fee > 0 ? `Rush fee: $${toCents(fee)}` : "",
+          `Total: $${toCents(total)}`,
+          `Deposit to lock in your date: $${toCents(deposit)}`,
+          `Pay securely here: ${link}`,
+          "Deposits are non-refundable.",
+          balance > 0 ? `The remaining $${toCents(balance)} is due at pickup.` : "",
+          "",
+          "Thank you so much ♡ Mone'T",
+        ].filter((s, i, a) => s || a[i - 1]).join("\n");
+      }
+      ["#finalTotal", "#rushFee", "#depositPct", "#payLink"].forEach((s) => $(s).addEventListener("input", refresh));
+      refresh();
+
+      $("#declineMsg").value = `Hi ${first}, thank you so much for your order request! Unfortunately I'm not able to take this one for ${dateText}. I'd love to bake for you another time ♡ Mone'T`;
+
+      $("#copyDesc").addEventListener("click", async () => {
+        const { deposit } = amounts();
+        const text = `Deposit (${$("#depositPct").value}%) for ${o.n}, pickup ${pickup}: $${toCents(deposit)}`;
+        try { await navigator.clipboard.writeText(text); toast("Copied ♡"); } catch { toast(text); }
+      });
+
+      document.querySelectorAll("[data-send]").forEach((b) => b.addEventListener("click", () => {
+        const approve = b.dataset.send === "approve";
+        if (approve && !$("#payLink").value.trim() && !confirm("No payment link pasted yet. Send anyway?")) return;
+        const body = (approve ? $("#approveMsg") : $("#declineMsg")).value;
+        const subject = approve ? "Your Cake'd By Mone'T order is approved! 🎉" : "Your Cake'd By Mone'T order request";
+        location.href = b.dataset.via === "sms"
+          ? `sms:${o.ph.replace(/[^\d+]/g, "")}?&body=${encodeURIComponent(body)}`
+          : `mailto:${o.e}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      }));
+    }
+
+    let toastTimer;
+    function toast(t) {
+      const el = $("#toast");
+      el.textContent = t;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
+    }
+  </script>
+</body>
+</html>

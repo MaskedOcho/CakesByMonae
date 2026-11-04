@@ -1,33 +1,3 @@
-// ===== Edit these to match the real page =====
-const CONFIG = {
-  phone: "+13869652713",
-  phoneDisplay: "386-965-2713",
-  instagram: "cakedbymonet", // Instagram handle without the @ (confirm exact spelling)
-};
-
-const FLAVORS = [
-  ["vanilla", "Vanilla"], ["chocolate", "Chocolate"], ["strawberry", "Strawberry"],
-  ["cookies-cream", "Cookies & Cream"], ["red-velvet", "Red Velvet"], ["banana-pudding", "Banana Pudding"],
-  ["funfetti", "Funfetti"], ["biscoff", "Biscoff"], ["carrot-cake", "Carrot Cake"],
-  ["lemon", "Lemon"], ["key-lime", "Key Lime"],
-];
-
-// Each product: bundle price tiers [quantity, price], biggest first
-const PRODUCTS = {
-  cupcake: { label: "Cupcakes", short: "Cupcake", tiers: [[12, 36], [6, 18], [1, 3]], img: (f) => `assets/cupcake-${f}.jpg`,
-             flavors: FLAVORS },
-  brownie: { label: "Regular Brownies", short: "Brownie", tiers: [[12, 40], [4, 15], [1, 4]], img: (f) => `assets/brownie-${f}.jpg`,
-             flavors: [["cookies-cream", "Cookies & Cream"], ["biscoff", "Biscoff"], ["chocolate", "Chocolate"], ["vanilla", "Vanilla"]] },
-  loaded:  { label: "Loaded Brownies", short: "Loaded Brownie", tiers: [[12, 60], [4, 22], [1, 6]], img: (f) => `assets/brownie-${f}.jpg`,
-             flavors: [["cookies-cream", "Cookies & Cream"], ["biscoff", "Biscoff"]] },
-  mini:    { label: "Mini Cakes", short: "Mini Cake", tiers: [[12, 60], [6, 35], [1, 5]], img: (f) => `assets/mini-${f}.jpg`,
-             flavors: FLAVORS },
-};
-const CUSTOM = ["custom", "Custom flavor (see notes)"];
-
-const $ = (s) => document.querySelector(s);
-const money = (n) => `$${n}`;
-
 // ----- Links / basics -----
 const igUrl = `https://instagram.com/${CONFIG.instagram}`;
 $("#igLink").href = igUrl;
@@ -93,21 +63,6 @@ let cart = [];
 try { cart = JSON.parse(localStorage.getItem("caked-cart")) || []; } catch {}
 const save = () => { try { localStorage.setItem("caked-cart", JSON.stringify(cart)); } catch {} };
 
-// Cheapest way to buy exactly n of a product using its bundle tiers
-function bestPrice(tiers, n) {
-  const best = [0];
-  for (let i = 1; i <= n; i++) {
-    best[i] = Infinity;
-    for (const [q, price] of tiers) if (q <= i) best[i] = Math.min(best[i], best[i - q] + price);
-  }
-  return best[n];
-}
-
-function flavorName(product, slug) {
-  if (slug === CUSTOM[0]) return CUSTOM[1];
-  return PRODUCTS[product].flavors.find(([s]) => s === slug)?.[1] ?? slug;
-}
-
 function addToCart(product, flavor, qty = 1) {
   const line = cart.find((l) => l.p === product && l.f === flavor);
   if (line) line.q += qty; else cart.push({ p: product, f: flavor, q: qty });
@@ -116,11 +71,7 @@ function addToCart(product, flavor, qty = 1) {
 }
 
 function totals() {
-  const counts = {};
-  cart.forEach((l) => (counts[l.p] = (counts[l.p] || 0) + l.q));
-  let sum = 0;
-  for (const [p, n] of Object.entries(counts)) sum += bestPrice(PRODUCTS[p].tiers, n);
-  return { sum, count: cart.reduce((a, l) => a + l.q, 0) };
+  return { sum: cartTotal(cart), count: cart.reduce((a, l) => a + l.q, 0) };
 }
 
 function renderCart() {
@@ -182,21 +133,89 @@ $("#addBtn").addEventListener("click", () => {
 
 renderCart();
 
-// ----- Submit: text the order -----
-$("#orderForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const f = e.target;
-  const d = Object.fromEntries(new FormData(f));
-  const msg = $("#formMsg");
-  if (!d.name || !d.date) { msg.textContent = "Please add your name and pickup date ♡"; return; }
-  if (!cart.length && !d.notes.trim()) { msg.textContent = "Add a treat or describe your custom order ♡"; return; }
+// ----- Booking: request -> Mone'T approves -> Stripe payment link -----
+const orderForm = $("#orderForm");
+const msg = $("#formMsg");
+const dateInput = orderForm.elements.date;
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const today = isoDate(new Date());
+const noRush = new Date();
+noRush.setDate(noRush.getDate() + CONFIG.noticeDays);
+dateInput.min = today;
+const isRush = (date) => date < isoDate(noRush);
+const rushText = `Rush order (under ${CONFIG.noticeDays} days' notice)`;
+$("#noticeNote").textContent = `Mone'T reviews every request before anything is charged, then texts or emails you a secure Stripe link for your ${CONFIG.depositPercent}% deposit. Deposits are non-refundable.`;
+$("#rushNote").textContent = `${rushText}: Mone'T may add a rush fee and will confirm your final price before you pay ♡`;
+dateInput.addEventListener("input", () => {
+  $("#rushNote").hidden = !dateInput.value || !isRush(dateInput.value);
+});
 
-  const lines = cart.map((l) => `• ${l.q} × ${flavorName(l.p, l.f)} ${PRODUCTS[l.p].short}${l.q > 1 ? "s" : ""}`);
+const readForm = () => {
+  const d = Object.fromEntries(new FormData(orderForm));
+  for (const k in d) d[k] = d[k].trim();
+  return d;
+};
+
+function problem(d, full = true) {
+  if (!d.name || !d.date || (full && (!d.phone || !d.email || !d.time))) {
+    return full ? "Please add your name, phone, email, pickup date and time ♡" : "Please add your name and pickup date ♡";
+  }
+  if (full && !/^\S+@\S+\.\S+$/.test(d.email)) return "That email doesn't look right ♡";
+  if (d.date < today) return "That date has already passed. Please pick another day ♡";
+  const day = new Date(d.date + "T12:00").getDay();
+  if (CONFIG.closedDays.includes(day)) return `Mone'T doesn't bake on ${DAYS[day]}s. Please pick another day ♡`;
+  if (!cart.length && !d.notes) return "Add a treat or describe your custom order ♡";
+  return "";
+}
+
+// FormNX link with everything filled in, plus a private review link for Mone'T
+function requestLink(d) {
+  const F = CONFIG.formFields;
+  const review = new URL("review.html", location.href);
+  review.hash = encodeOrder({ n: d.name, ph: d.phone, e: d.email, d: d.date, t: d.time, no: d.notes, r: isRush(d.date) ? 1 : 0, i: cart.map((l) => [l.p, l.f, l.q]) });
+  const url = new URL(CONFIG.formUrl);
+  const params = {
+    [F.name]: d.name, [F.phone]: d.phone, [F.email]: d.email, [F.date]: d.date, [F.time]: prettyTime(d.time),
+    [F.details]: [...(isRush(d.date) ? [rushText] : []), ...(cart.length ? cart.map(lineText) : ["Custom order (see notes)"])].join("\n"),
+    [F.total]: totals().sum, [F.notes]: d.notes,
+    [F.review]: review.href,
+  };
+  for (const [k, v] of Object.entries(params)) if (k && v !== "") url.searchParams.set(k, v);
+  return url.href;
+}
+
+const dialog = $("#requestDialog");
+orderForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const d = readForm();
+  const err = problem(d);
+  if (err) { msg.textContent = err; return; }
+  msg.textContent = "";
+  const link = requestLink(d);
+  $("#requestFrame").src = link;
+  $("#requestTab").href = link;
+  dialog.showModal();
+});
+$("#requestClose").addEventListener("click", () => dialog.close());
+dialog.addEventListener("close", () => {
+  $("#requestFrame").src = "about:blank";
+  msg.textContent = "Once you tap Submit on the form, Mone'T will review your request and reach out ♡";
+});
+
+// Prefer to text? Same order as a message
+$("#textBtn").addEventListener("click", async () => {
+  const d = readForm();
+  const err = problem(d, false);
+  if (err) { msg.textContent = err; return; }
+
+  const lines = cart.map((l) => `• ${lineText(l)}`);
   const text = [
     `Hi Mone'T! New order from ${d.name} 🧁`,
-    `Date needed: ${d.date}`,
+    `Date needed: ${d.date}${d.time ? ` at ${prettyTime(d.time)}` : ""}`,
+    ...(isRush(d.date) ? [rushText] : []),
     ...(lines.length ? ["", ...lines, `Est. total: ${money(totals().sum)}`] : []),
-    ...(d.notes.trim() ? ["", `Notes: ${d.notes.trim()}`] : []),
+    ...(d.notes ? ["", `Notes: ${d.notes}`] : []),
   ].join("\n");
 
   const isPhone = matchMedia("(pointer: coarse)").matches;
