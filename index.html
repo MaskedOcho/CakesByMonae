@@ -18,6 +18,7 @@
       <a href="#cupcakes">Cupcakes</a>
       <a href="#brownies">Brownies</a>
       <a href="#minicakes">Mini Cakes</a>
+      <a href="#policies">Policies</a>
       <a href="#order" class="btn btn-small">Order Now <span class="cart-count" id="navCount" hidden>0</span></a>
     </nav>
   </header>
@@ -66,6 +67,7 @@
       <div><small>6 for</small><strong>$18</strong></div>
       <div><small>12 for</small><strong>$36</strong></div>
     </div>
+    <p class="min-tag">Minimum 6 cupcakes · mix any flavors</p>
     <div class="flavor-grid" data-menu="cupcakes"></div>
   </section>
 
@@ -91,6 +93,7 @@
         <div><small>12 for</small><strong>$60</strong></div>
       </div>
     </div>
+    <p class="min-tag">Minimum 6 brownies · mix flavors, regular &amp; loaded</p>
     <div class="flavor-grid" data-menu="brownies"></div>
   </section>
 
@@ -106,6 +109,7 @@
       <div><small>6 for</small><strong>$35</strong></div>
       <div><small>12 for</small><strong>$60</strong></div>
     </div>
+    <p class="min-tag">Minimum 6 mini cakes · mix any flavors</p>
     <div class="flavor-grid" data-menu="minicakes"></div>
   </section>
 
@@ -115,6 +119,36 @@
       <p class="occasions">Birthdays <span>♡</span> Special Occasions <span>♡</span> Just Because <span>♡</span> &amp; More!</p>
       <p>Don't see your flavor? Ask for <strong>any flavor that's not listed!</strong> Dream it up, and Mone'T will bake it.</p>
       <a href="#order" class="btn">Start a Custom Order ♡</a>
+    </div>
+  </section>
+
+  <section class="policies" id="policies">
+    <div class="section-head">
+      <h2 class="neon-script small">Ordering Policies</h2>
+      <p class="kicker">Please read before you order ♡</p>
+    </div>
+    <div class="policy-grid">
+      <article class="policy pink">
+        <h3>Minimum Order</h3>
+        <p>At least <b>6 per category</b>: 6 cupcakes, 6 brownies or 6 mini cakes. Mix flavors within a category (regular and loaded brownies count together).</p>
+        <p>Categories can't be combined to reach the minimum. 3 cupcakes + 3 brownies is not an order.</p>
+      </article>
+      <article class="policy lime">
+        <h3>Payment</h3>
+        <p><b>Orders under $75</b> are paid in full.</p>
+        <p><b>Custom orders and orders $75 or more</b> need a <b>50% non-refundable deposit</b>. The balance is due at pickup.</p>
+      </article>
+      <article class="policy cyan">
+        <h3>Confirmation</h3>
+        <p>Your order is <b>confirmed only after your payment is verified</b>. Until then, your date isn't held.</p>
+        <ol class="status-steps"><li>Received</li><li>Pending payment</li><li>Confirmed</li></ol>
+        <p>You'll get a confirmation with your order details, payment status and pickup info, plus a reminder the day before pickup.</p>
+      </article>
+      <article class="policy purple">
+        <h3>Timing</h3>
+        <p>Please order at least <b>3 days ahead</b>. Rush orders may have a rush fee, and Mone'T will confirm your final price before you pay.</p>
+        <p>Deposits are non-refundable.</p>
+      </article>
     </div>
   </section>
 
@@ -134,7 +168,8 @@
           <input id="addQty" type="number" min="1" value="1" aria-label="Quantity" />
           <button type="button" class="btn btn-small" id="addBtn">+ Add</button>
         </div>
-        <p class="total">Estimated total: <strong id="total">$0</strong><small>Bundle pricing applied. Mone'T will confirm your final price.</small></p>
+        <p class="notice rush" id="minNote" role="status" hidden></p>
+        <p class="total">Estimated total: <strong id="total">$0</strong><small>Bundle pricing applied. Mone'T will confirm your final price.</small><small id="payNote"></small></p>
 
         <div class="fields">
           <label>Name<input name="name" required autocomplete="name" /></label>
@@ -145,6 +180,7 @@
           <label class="full">Notes or custom request<textarea name="notes" rows="3" placeholder="Colors, theme, a flavor that's not listed, number of servings…"></textarea></label>
         </div>
         <p class="notice rush" id="rushNote" role="status" hidden></p>
+        <label class="agree"><input type="checkbox" name="agree" /><span>I've read the <a href="#policies">ordering policies</a>: 6 minimum per category, payment in full under $75, 50% non-refundable deposit for custom orders and orders $75+.</span></label>
         <p class="notice" id="noticeNote"></p>
         <button class="btn btn-block" type="submit">Request My Order ♡</button>
         <button class="link-btn" type="button" id="textBtn">Prefer to text it instead?</button>
@@ -176,6 +212,7 @@
     <img src="assets/logo.png" alt="Cake'd by Mone'T" class="foot-logo" />
     <p class="services">Cupcakes <b>|</b> Brownies <b>|</b> Mini Cakes <b>|</b> Custom Orders</p>
     <p><a href="tel:+13869652713">386-965-2713</a> · <a id="igFooter" target="_blank" rel="noopener"></a></p>
+    <p><a href="#policies">Ordering policies</a></p>
     <p class="small">© <span id="yr"></span> Cake'd By Mone'T · Made with love ♡</p>
   </footer>
 
