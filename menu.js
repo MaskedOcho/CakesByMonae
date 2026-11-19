@@ -4,8 +4,14 @@ const CONFIG = {
   phoneDisplay: "386-965-2713",
   instagram: "cakedbymonet", // Instagram handle without the @ (confirm exact spelling)
 
-  // Booking
-  depositPercent: 50,  // deposit asked for once Mone'T approves
+  // Order system (Google Sheet backend, see apps-script/SETUP.md).
+  // Paste the Apps Script web app URL here. Leave it empty to keep using the FormNX form.
+  ordersApi: "",
+
+  // Ordering policies (also set the same numbers in apps-script/Code.gs)
+  minPerCategory: 6,   // at least 6 cupcakes, 6 brownies or 6 mini cakes; flavors can mix
+  fullPayUnder: 75,    // regular orders under $75 are paid in full
+  depositPercent: 50,  // custom orders and orders of $75+ pay this deposit, rest at pickup
   noticeDays: 3,       // anything sooner is a rush order and may get a rush fee
   closedDays: [],      // days she doesn't bake: 0 = Sun, 1 = Mon … 6 = Sat
   formUrl: "https://fill.formnx.com/f/cake-d-by-monet-71dt44",
@@ -24,21 +30,50 @@ const FLAVORS = [
   ["lemon", "Lemon"], ["key-lime", "Key Lime"],
 ];
 
+// Minimums are counted per category. Regular and loaded brownies count together.
+const CATEGORIES = { cupcakes: "cupcakes", brownies: "brownies", minicakes: "mini cakes" };
+
 // Each product: bundle price tiers [quantity, price], biggest first
 const PRODUCTS = {
-  cupcake: { label: "Cupcakes", short: "Cupcake", tiers: [[12, 36], [6, 18], [1, 3]], img: (f) => `assets/cupcake-${f}.jpg`,
+  cupcake: { label: "Cupcakes", short: "Cupcake", cat: "cupcakes", tiers: [[12, 36], [6, 18], [1, 3]], img: (f) => `assets/cupcake-${f}.jpg`,
              flavors: FLAVORS },
-  brownie: { label: "Regular Brownies", short: "Brownie", tiers: [[12, 40], [4, 15], [1, 4]], img: (f) => `assets/brownie-${f}.jpg`,
+  brownie: { label: "Regular Brownies", short: "Brownie", cat: "brownies", tiers: [[12, 40], [4, 15], [1, 4]], img: (f) => `assets/brownie-${f}.jpg`,
              flavors: [["cookies-cream", "Cookies & Cream"], ["biscoff", "Biscoff"], ["chocolate", "Chocolate"], ["vanilla", "Vanilla"]] },
-  loaded:  { label: "Loaded Brownies", short: "Loaded Brownie", tiers: [[12, 60], [4, 22], [1, 6]], img: (f) => `assets/brownie-${f}.jpg`,
+  loaded:  { label: "Loaded Brownies", short: "Loaded Brownie", cat: "brownies", tiers: [[12, 60], [4, 22], [1, 6]], img: (f) => `assets/brownie-${f}.jpg`,
              flavors: [["cookies-cream", "Cookies & Cream"], ["biscoff", "Biscoff"]] },
-  mini:    { label: "Mini Cakes", short: "Mini Cake", tiers: [[12, 60], [6, 35], [1, 5]], img: (f) => `assets/mini-${f}.jpg`,
+  mini:    { label: "Mini Cakes", short: "Mini Cake", cat: "minicakes", tiers: [[12, 60], [6, 35], [1, 5]], img: (f) => `assets/mini-${f}.jpg`,
              flavors: FLAVORS },
 };
 const CUSTOM = ["custom", "Custom flavor (see notes)"];
 
 const $ = (s) => document.querySelector(s);
 const money = (n) => `$${n}`;
+const cents = (n) => `$${(Math.round(n * 100) / 100).toFixed(2)}`;
+
+// How many of each category are in a list of cart lines
+function categoryCounts(lines) {
+  const counts = {};
+  lines.forEach((l) => { const c = PRODUCTS[l.p]?.cat; if (c) counts[c] = (counts[c] || 0) + l.q; });
+  return counts;
+}
+
+// Categories that have some items but fewer than the minimum
+function minimumProblems(lines) {
+  const min = CONFIG.minPerCategory;
+  return Object.entries(categoryCounts(lines))
+    .filter(([, n]) => n > 0 && n < min)
+    .map(([c, n]) => `Add ${min - n} more ${CATEGORIES[c]} (minimum ${min} ${CATEGORIES[c]})`);
+}
+
+// Custom = a custom flavor, or a request described only in the notes
+const isCustomOrder = (lines) => !lines.length || lines.some((l) => l.f === CUSTOM[0]);
+
+// Under $75 and not custom: pay in full. Otherwise a 50% non-refundable deposit, balance at pickup.
+function paymentPlan(total, custom) {
+  const deposit = custom || total >= CONFIG.fullPayUnder;
+  const due = deposit ? Math.round(total * CONFIG.depositPercent) / 100 : total;
+  return { deposit, due, balance: Math.round((total - due) * 100) / 100 };
+}
 
 // Cheapest way to buy exactly n of a product using its bundle tiers
 function bestPrice(tiers, n) {

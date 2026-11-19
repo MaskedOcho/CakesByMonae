@@ -63,11 +63,17 @@ let cart = [];
 try { cart = JSON.parse(localStorage.getItem("caked-cart")) || []; } catch {}
 const save = () => { try { localStorage.setItem("caked-cart", JSON.stringify(cart)); } catch {} };
 
+const MIN = CONFIG.minPerCategory;
+const catCount = (product) => categoryCounts(cart)[PRODUCTS[product].cat] || 0;
+
+// The first add in a category starts at the minimum, so nobody can pick fewer than 6
 function addToCart(product, flavor, qty = 1) {
+  const first = catCount(product) === 0 && qty < MIN;
+  if (first) qty = MIN;
   const line = cart.find((l) => l.p === product && l.f === flavor);
   if (line) line.q += qty; else cart.push({ p: product, f: flavor, q: qty });
   renderCart();
-  toast(`Added ${qty} ${flavorName(product, flavor)} ${PRODUCTS[product].short}${qty > 1 ? "s" : ""} ♡`);
+  toast(`Added ${qty} ${flavorName(product, flavor)} ${PRODUCTS[product].short}${qty > 1 ? "s" : ""}${first ? ` (${MIN} minimum)` : ""} ♡`);
 }
 
 function totals() {
@@ -80,21 +86,30 @@ function renderCart() {
   if (!cart.length) {
     ul.innerHTML = `<li class="empty">Tap <b>+ Add</b> on any treat above, or add it here.</li>`;
   }
+  const counts = categoryCounts(cart);
   cart.forEach((l, i) => {
     const p = PRODUCTS[l.p];
     const li = document.createElement("li");
     const img = l.f === CUSTOM[0] ? "" : `<img src="${p.img(l.f)}" alt="" />`;
+    // − can't take a category below the minimum; ✕ removes the whole line
+    const left = counts[p.cat] - 1;
+    const atMin = left > 0 && left < MIN;
     li.innerHTML = `${img}<span class="name">${flavorName(l.p, l.f)}<small>${p.label}</small></span>
-      <span class="qty"><button type="button" data-i="${i}" data-d="-1" aria-label="Fewer">−</button><span>${l.q}</span><button type="button" data-i="${i}" data-d="1" aria-label="More">+</button></span>
+      <span class="qty"><button type="button" data-i="${i}" data-d="-1" aria-label="Fewer"${atMin ? " disabled" : ""}>−</button><span>${l.q}</span><button type="button" data-i="${i}" data-d="1" aria-label="More">+</button></span>
       <button type="button" class="rm" data-rm="${i}" aria-label="Remove">✕</button>`;
     ul.append(li);
   });
+  const short = minimumProblems(cart);
+  $("#minNote").hidden = !short.length;
+  $("#minNote").textContent = short.join(" · ");
   const { sum, count } = totals();
   $("#total").textContent = money(sum);
+  $("#payNote").textContent = sum ? payText(sum, isCustomOrder(cart)) : "";
   const nc = $("#navCount");
   nc.hidden = !count;
   nc.textContent = count;
   save();
+  fillQty();
 }
 
 $("#cart").addEventListener("click", (e) => {
@@ -103,11 +118,21 @@ $("#cart").addEventListener("click", (e) => {
   if (b.dataset.rm) cart.splice(+b.dataset.rm, 1);
   else {
     const l = cart[+b.dataset.i];
-    l.q += +b.dataset.d;
+    const d = +b.dataset.d;
+    const left = catCount(l.p) + d;
+    if (d < 0 && left > 0 && left < MIN) { toast(`Minimum ${MIN} ${CATEGORIES[PRODUCTS[l.p].cat]}. Tap ✕ to remove ♡`); return; }
+    l.q += d;
     if (l.q < 1) cart.splice(+b.dataset.i, 1);
   }
   renderCart();
 });
+
+function payText(total, custom) {
+  const plan = paymentPlan(total, custom);
+  return plan.deposit
+    ? `${custom ? "Custom order" : `Order of $${CONFIG.fullPayUnder}+`}: ${CONFIG.depositPercent}% non-refundable deposit (about ${cents(plan.due)}) to confirm, balance at pickup.`
+    : `Orders under $${CONFIG.fullPayUnder} are paid in full to confirm.`;
+}
 
 document.addEventListener("click", (e) => {
   const b = e.target.closest(".flavor .add");
@@ -123,12 +148,18 @@ function fillFlavors() {
   if (itemSel.value === "cupcake" || itemSel.value === "mini") list.push(CUSTOM);
   list.forEach(([s, n]) => flavorSel.add(new Option(n, s)));
 }
-itemSel.addEventListener("change", fillFlavors);
+// Quantity box starts at 6 for a category that isn't in the cart yet
+function fillQty() {
+  const min = catCount(itemSel.value) ? 1 : MIN;
+  $("#addQty").min = min;
+  $("#addQty").value = min;
+}
+itemSel.addEventListener("change", () => { fillFlavors(); fillQty(); });
 fillFlavors();
 $("#addBtn").addEventListener("click", () => {
-  const q = Math.max(1, parseInt($("#addQty").value, 10) || 1);
+  const q = Math.max(+$("#addQty").min, parseInt($("#addQty").value, 10) || 0);
   addToCart(itemSel.value, flavorSel.value, q);
-  $("#addQty").value = 1;
+  fillQty();
 });
 
 renderCart();
@@ -145,7 +176,7 @@ noRush.setDate(noRush.getDate() + CONFIG.noticeDays);
 dateInput.min = today;
 const isRush = (date) => date < isoDate(noRush);
 const rushText = `Rush order (under ${CONFIG.noticeDays} days' notice)`;
-$("#noticeNote").textContent = `Mone'T reviews every request before anything is charged, then texts or emails you a secure Stripe link for your ${CONFIG.depositPercent}% deposit. Deposits are non-refundable.`;
+$("#noticeNote").textContent = `Nothing is charged yet. Mone'T reviews your request, then sends your payment link. Your order is confirmed once your payment is verified.`;
 $("#rushNote").textContent = `${rushText}: Mone'T may add a rush fee and will confirm your final price before you pay ♡`;
 dateInput.addEventListener("input", () => {
   $("#rushNote").hidden = !dateInput.value || !isRush(dateInput.value);
@@ -166,6 +197,9 @@ function problem(d, full = true) {
   const day = new Date(d.date + "T12:00").getDay();
   if (CONFIG.closedDays.includes(day)) return `Mone'T doesn't bake on ${DAYS[day]}s. Please pick another day ♡`;
   if (!cart.length && !d.notes) return "Add a treat or describe your custom order ♡";
+  const short = minimumProblems(cart);
+  if (short.length) return `${short.join(". ")} ♡`;
+  if (full && !orderForm.elements.agree.checked) return "Please check that you've read the ordering policies ♡";
   return "";
 }
 
@@ -185,6 +219,41 @@ function requestLink(d) {
   return url.href;
 }
 
+// Send the request to the Google Sheet backend. Status starts as "Received".
+async function sendToBackend(d) {
+  const submit = orderForm.querySelector('[type="submit"]');
+  submit.disabled = true;
+  msg.textContent = "Sending your request…";
+  try {
+    const res = await fetch(CONFIG.ordersApi, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // keeps it a simple request for Apps Script
+      body: JSON.stringify({
+        action: "create",
+        order: {
+          name: d.name, phone: d.phone, email: d.email, date: d.date, time: d.time, timeText: prettyTime(d.time), notes: d.notes,
+          rush: isRush(d.date), custom: isCustomOrder(cart), estimate: totals().sum,
+          items: cart.map((l) => [l.p, l.f, l.q]), lines: cart.map(lineText),
+        },
+      }),
+    });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || "failed");
+    cart = [];
+    orderForm.reset();
+    fillFlavors();
+    renderCart();
+    $("#rushNote").hidden = true;
+    out.id = String(out.id).replace(/[^A-Za-z0-9-]/g, "");
+    const status = new URL(`status.html#${out.id}`, location.href).href;
+    msg.innerHTML = `Request received! Your order number is <b>${out.id}</b>. Check your email. Mone'T will send your payment link after she reviews it. <a href="${status}">Track your order ♡</a>`;
+  } catch (err) {
+    msg.textContent = `Something went wrong sending your request. Please text your order to ${CONFIG.phoneDisplay} ♡`;
+  } finally {
+    submit.disabled = false;
+  }
+}
+
 const dialog = $("#requestDialog");
 orderForm.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -192,6 +261,7 @@ orderForm.addEventListener("submit", (e) => {
   const err = problem(d);
   if (err) { msg.textContent = err; return; }
   msg.textContent = "";
+  if (CONFIG.ordersApi) { sendToBackend(d); return; }
   const link = requestLink(d);
   $("#requestFrame").src = link;
   $("#requestTab").href = link;

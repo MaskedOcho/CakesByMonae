@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Order Status · Cake'd By Mone'T</title>
+  <meta name="theme-color" content="#0a0610" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&family=Pacifico&family=Yellowtail&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    main { max-width: 640px; margin: 0 auto; padding: 2rem 1rem 4rem; display: grid; gap: 1.5rem; }
+    .top { text-align: center; }
+    .top img { width: min(240px, 65%); margin: 0 auto; }
+    .top h1 { font-family: var(--hand); font-weight: 400; font-size: 2.4rem; color: var(--pink-hot); }
+    .form { display: grid; gap: 1rem; }
+    .form h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .2em; color: var(--muted); }
+    .steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; text-align: center; }
+    .steps li { border: 2px solid #4a2a5c; border-radius: 14px; padding: .6rem .3rem; font-weight: 800; font-size: .8rem; text-transform: uppercase; color: var(--muted); }
+    .steps .done { border-color: var(--lime); color: var(--lime); }
+    .steps .now { border-color: var(--pink); background: var(--pink); color: #fff; box-shadow: 0 0 16px var(--pink); }
+    .msg { font-size: 1.05rem; font-weight: 700; text-align: center; }
+    dl { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1rem; }
+    dt { color: var(--muted); font-weight: 700; }
+    dd { font-weight: 700; white-space: pre-line; overflow-wrap: anywhere; }
+    dd.big { color: var(--lime); font-size: 1.2rem; }
+    .lookup { display: flex; gap: .6rem; }
+    .lookup input { flex: 1; text-transform: uppercase; }
+    .hint { color: var(--muted); font-size: .9rem; text-align: center; }
+    .back { text-align: center; }
+    .back a { color: var(--pink-hot); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="top">
+      <a href="index.html"><img src="assets/logo.png" alt="Cake'd by Mone'T" /></a>
+      <h1>Order Status</h1>
+    </header>
+    <div id="app"></div>
+    <p class="back"><a href="index.html#policies">Ordering policies</a> · <a href="index.html">Back to the menu</a></p>
+  </main>
+
+  <script src="menu.js"></script>
+  <script>
+    const app = $("#app");
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    const num = (s) => Number(String(s || "").replace(/[^0-9.]/g, "")) || 0;
+    const STEPS = ["Received", "Pending Payment", "Confirmed"];
+
+    function lookup(error = "") {
+      app.innerHTML = `<form class="form" id="f">
+        <h2>Find your order</h2>
+        <div class="lookup"><input id="id" placeholder="CM-XXXXXX" autocomplete="off" /><button class="btn btn-small" type="submit">Check</button></div>
+        <p class="hint">Your order number is in the email you got after ordering.${error ? `<br><b style="color:var(--yellow)">${esc(error)}</b>` : ""}</p>
+      </form>`;
+      $("#f").addEventListener("submit", (e) => { e.preventDefault(); location.hash = $("#id").value.trim().toUpperCase(); });
+    }
+
+    async function load() {
+      const id = decodeURIComponent(location.hash.slice(1)).trim();
+      if (!CONFIG.ordersApi) { app.innerHTML = `<p class="form hint">Order tracking is coming soon. Questions? Text ${esc(CONFIG.phoneDisplay)} ♡</p>`; return; }
+      if (!id) return lookup();
+      app.innerHTML = `<p class="hint">Loading…</p>`;
+      try {
+        const out = await fetch(`${CONFIG.ordersApi}?${new URLSearchParams({ action: "status", id })}`).then((r) => r.json());
+        if (!out.ok) return lookup("We couldn't find that order number.");
+        show(out.order);
+      } catch {
+        app.innerHTML = `<p class="form hint">Couldn't load your order right now. Text ${esc(CONFIG.phoneDisplay)} ♡</p>`;
+      }
+    }
+
+    function show(o) {
+      const step = STEPS.indexOf(o.status);
+      const bal = num(o.balance);
+      const messages = {
+        Received: "Mone'T has your request and is reviewing it. She'll send your payment link soon. Nothing has been charged.",
+        "Pending Payment": "Your order is approved! Pay below to confirm it. Your date is not held until your payment is verified.",
+        Confirmed: "Your payment was verified and your order is confirmed! 🎉 You'll get a reminder the day before pickup.",
+        Declined: "Mone'T wasn't able to take this order. Check your email for details.",
+      };
+      app.innerHTML = `<section class="form">
+        <h2>Order ${esc(o.id)}</h2>
+        ${o.status === "Declined" ? "" : `<ol class="steps">${STEPS.map((s, i) =>
+          `<li class="${i < step ? "done" : i === step ? "now" : ""}">${i < step ? "✓ " : ""}${s}</li>`).join("")}</ol>`}
+        <p class="msg">${messages[o.status] || esc(o.status)}</p>
+        <dl>
+          <dt>Order</dt><dd>${esc(o.items)}</dd>
+          <dt>Pickup</dt><dd>${esc(o.dateText)}${o.time ? ` at ${esc(o.time)}` : ""}</dd>
+          ${o.total ? `<dt>Total</dt><dd>${esc(o.total)}${o.rushFee ? ` (incl. ${esc(o.rushFee)} rush fee)` : ""}</dd>` : `<dt>Estimate</dt><dd>${esc(o.estimate)}</dd>`}
+          ${o.status === "Pending Payment" ? `<dt>Due now</dt><dd class="big">${esc(o.due)} (${esc(o.paymentType.toLowerCase())})</dd>
+            ${num(o.balance) > 0 ? `<dt>At pickup</dt><dd>${esc(o.balance)}</dd>` : ""}` : ""}
+          ${o.status === "Confirmed" ? `<dt>Payment</dt><dd>${bal > 0 ? `Deposit paid: ${esc(o.paid)}` : `Paid in full: ${esc(o.paid)}`}</dd>
+            ${bal > 0 ? `<dt>Due at pickup</dt><dd class="big">${esc(o.balance)}</dd>` : ""}
+            <dt>Pickup info</dt><dd>${esc(o.pickupInfo)}</dd>` : ""}
+        </dl>
+        ${o.status === "Pending Payment" && /^https:\/\//.test(o.payLink || "") ? `<a class="btn btn-block" href="${esc(o.payLink)}" target="_blank" rel="noopener">Pay ${esc(o.due)} securely</a>` : ""}
+        ${o.status === "Pending Payment" && o.cashApp ? `<p class="hint">Or Cash App ${esc(o.due)} to <b>${esc(o.cashApp)}</b> with <b>${esc(o.id)}</b> in the note.</p>` : ""}
+        ${o.status === "Pending Payment" && o.paymentType !== "Paid in full" ? `<p class="hint">Deposits are non-refundable.</p>` : ""}
+      </section>`;
+    }
+
+    window.addEventListener("hashchange", load);
+    load();
+  </script>
+</body>
+</html>

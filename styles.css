@@ -268,3 +268,23 @@ footer .small { font-size: .8rem; color: var(--muted); }
   .building *, .building, .sparkle-field { animation: none !important; }
   .drip { height: 40%; }
 }
+
+/* Minimums + policies */
+.min-tag { text-align: center; margin: -1.6rem auto 2rem; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; color: var(--yellow); position: relative; z-index: 1; }
+.policies { background: radial-gradient(ellipse at 50% 0, #1c0b2a 0%, var(--bg) 65%); }
+.policy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 1.2rem; max-width: 1100px; margin: 0 auto; }
+.policy { --c: var(--pink); background: var(--bg-2); border: 2px solid var(--c); border-radius: var(--radius); padding: 1.3rem 1.4rem; display: grid; gap: .6rem; align-content: start;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c) 45%, transparent); }
+.policy.lime { --c: var(--lime); } .policy.cyan { --c: var(--cyan); } .policy.purple { --c: var(--purple); }
+.policy h3 { font-family: var(--hand); font-weight: 400; font-size: 2rem; color: var(--c); text-shadow: 0 0 10px var(--c); line-height: 1.1; }
+.policy p { color: var(--muted); font-size: .95rem; }
+.policy b { color: #fff; }
+.status-steps { list-style: none; display: flex; flex-wrap: wrap; gap: .3rem; counter-reset: s; }
+.status-steps li { counter-increment: s; font-weight: 800; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; border: 1.5px solid var(--c); border-radius: 999px; padding: .2rem .6rem; }
+.status-steps li::before { content: counter(s) " "; color: var(--c); }
+.agree { display: flex; gap: .6rem; align-items: flex-start; margin-top: 1rem; font-size: .88rem; color: var(--muted); cursor: pointer; }
+.form .agree input { width: 1.2rem; height: 1.2rem; flex: none; margin-top: .15rem; accent-color: var(--pink); padding: 0; }
+.agree a, .form-msg a { color: var(--pink-hot); font-weight: 700; }
+.qty button:disabled { opacity: .3; cursor: not-allowed; background: transparent; }
+.btn:disabled { opacity: .6; cursor: wait; transform: none; }
+#minNote { margin: 0 0 .5rem; }
