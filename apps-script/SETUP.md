@@ -8,7 +8,7 @@ sends the emails and the day-before pickup reminders. No server and no monthly c
 2. In the sheet: **Extensions → Apps Script**.
 3. Delete everything in `Code.gs` and paste in the contents of `apps-script/Code.gs` from this repo.
 4. Edit `SETTINGS` at the top:
-   - `PICKUP_INFO`: pickup address or instructions. This goes in confirmations and reminders.
+   - `PICKUP_INFO`: leave it empty. Pickup location and instructions vary, so Mone'T types them for each order in the dashboard before confirming.
    - `CASH_APP`: her $cashtag if she takes Cash App, or leave it empty.
    - `NOTIFY_EMAIL`: only if new-order alerts should go somewhere other than this Google account.
 5. **Project Settings** (gear icon) → set the **Time zone** to hers (Eastern for 386).

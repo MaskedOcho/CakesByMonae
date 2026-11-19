@@ -37,6 +37,7 @@
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     .grid2 label, .stack label { display: flex; flex-direction: column; gap: .35rem; font-weight: 700; font-size: .9rem; }
     .stack { display: grid; gap: 1rem; }
+    .stack textarea { resize: vertical; }
     .check { flex-direction: row !important; align-items: center; gap: .6rem !important; }
     .form .check input { width: 1.2rem; height: 1.2rem; accent-color: var(--pink); }
     .money-row { display: flex; justify-content: space-between; font-weight: 700; }
@@ -159,6 +160,7 @@
             <dt>Phone</dt><dd><a href="tel:${esc(phone)}">${esc(o.Phone)}</a></dd>
             <dt>Email</dt><dd><a href="mailto:${esc(o.Email)}">${esc(o.Email)}</a></dd>
             <dt>Pickup</dt><dd>${esc(o.dateText)}${o["Pickup Time"] ? ` at ${esc(o["Pickup Time"])}` : ""}</dd>
+            ${o["Pickup Info"] ? `<dt>Pickup info</dt><dd>${esc(o["Pickup Info"])}</dd>` : ""}
             <dt>Items</dt><dd>${esc(o.Items)}</dd>
             ${o.Notes ? `<dt>Notes</dt><dd>${esc(o.Notes)}</dd>` : ""}
             <dt>Menu estimate</dt><dd>${esc(o.Estimate)}</dd>
@@ -203,6 +205,9 @@
           <input id="link" type="url" placeholder="https://buy.stripe.com/…" value="${esc(o["Payment Link"])}" />
         </label>
         <p class="hint">Make a Stripe payment link for the "due now" amount, then paste it above.</p>
+        <label>Pickup location &amp; instructions <span class="hint">(optional now, needed before confirming)</span>
+          <textarea id="pickupPay" rows="3" placeholder="Address, where to park, who to ask for…">${esc(o["Pickup Info"])}</textarea>
+        </label>
         <div class="row">
           <a class="btn btn-ghost" href="https://dashboard.stripe.com/payment-links/create" target="_blank" rel="noopener">Open Stripe ↗</a>
           <button class="btn btn-ghost" type="button" id="copyDesc">Copy description</button>
@@ -231,7 +236,7 @@
       });
       $("#sendPay").addEventListener("click", () => act($("#sendPay"), {
         action: "requestPayment", id: o.ID, total: +$("#price").value || 0, rushFee: o.Rush ? +$("#fee").value || 0 : 0,
-        custom: $("#custom").checked, payLink: $("#link").value.trim(),
+        custom: $("#custom").checked, payLink: $("#link").value.trim(), pickupInfo: $("#pickupPay").value,
       }));
     }
 
@@ -252,6 +257,9 @@
             <option>Card (Stripe)</option><option>Apple Pay (Stripe)</option><option>Cash App</option><option>Cash</option><option>Other</option>
           </select></label>
         </div>
+        <label>Pickup location &amp; instructions (goes in the confirmation and reminder)
+          <textarea id="pickupInfo" rows="3" placeholder="Address, where to park, who to ask for…">${esc(o["Pickup Info"])}</textarea>
+        </label>
         <button class="btn" type="button" id="markPaid">Payment verified: confirm order ♡</button>
         <p class="hint">Sends the confirmation email with the order details, payment status and pickup info. The pickup reminder then goes out automatically the day before.</p>
         <details><summary class="hint" style="cursor:pointer">Change the price or payment link</summary><div id="resend"></div></details>`;
@@ -262,8 +270,9 @@
       });
       $("#markPaid").addEventListener("click", () => {
         const amount = +$("#amount").value || 0;
+        if (!$("#pickupInfo").value.trim()) { toast("Add the pickup location and instructions first ♡"); $("#pickupInfo").focus(); return; }
         if (amount < num(o["Amount Due"]) && !confirm(`${cents(amount)} is less than the ${o["Amount Due"]} due. Confirm anyway?`)) return;
-        act($("#markPaid"), { action: "markPaid", id: o.ID, amount, method: $("#method").value });
+        act($("#markPaid"), { action: "markPaid", id: o.ID, amount, method: $("#method").value, pickupInfo: $("#pickupInfo").value });
       });
     }
 

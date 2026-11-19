@@ -12,7 +12,7 @@ const SETTINGS = {
   BUSINESS: "Cake'd By Mone'T",
   PHONE: "386-965-2713",
   NOTIFY_EMAIL: "",        // where new-order alerts go. Empty = the Google account running this script
-  PICKUP_INFO: "Mone'T will text you the pickup address. Call or text 386-965-2713 with any questions.",
+  PICKUP_INFO: "",          // optional default pickup info. Normally Mone'T types it per order in the dashboard
   CASH_APP: "",            // e.g. "$CakedByMonet" to also offer Cash App. Empty = payment link only
   MIN_PER_CATEGORY: 6,     // keep these three the same as CONFIG in menu.js
   FULL_PAY_UNDER: 75,
@@ -25,7 +25,7 @@ const SHEET = "Orders";
 const STATUS = { RECEIVED: "Received", PENDING: "Pending Payment", CONFIRMED: "Confirmed", DECLINED: "Declined" };
 const CATEGORY = { cupcake: "cupcakes", brownie: "brownies", loaded: "brownies", mini: "mini cakes" };
 const HEADERS = [
-  "ID", "Created", "Status", "Name", "Phone", "Email", "Pickup Date", "Pickup Time", "Items", "Item Data", "Notes",
+  "ID", "Created", "Status", "Name", "Phone", "Email", "Pickup Date", "Pickup Time", "Pickup Info", "Items", "Item Data", "Notes",
   "Rush", "Custom", "Estimate", "Total", "Rush Fee", "Payment Type", "Amount Due", "Balance At Pickup", "Payment Link",
   "Payment Requested At", "Amount Paid", "Payment Method", "Paid At", "Confirmation Sent", "Reminder Sent", "Declined At",
 ];
@@ -149,6 +149,7 @@ function requestPayment_(p) {
   const total = round_(price + fee);
   const custom = !!p.custom;
   const plan = plan_(total, custom);
+  if (p.pickupInfo != null) o["Pickup Info"] = String(p.pickupInfo).trim().slice(0, 1000);
 
   Object.assign(o, {
     Total: money_(total), "Rush Fee": fee ? money_(fee) : "", Custom: custom ? "Yes" : "",
@@ -172,6 +173,8 @@ function markPaid_(p) {
   if (o.Status !== STATUS.PENDING) throw new Error("Only orders waiting on payment can be confirmed (this one is " + o.Status + ")");
   const amount = round_(Number(p.amount) || 0);
   if (!amount) throw new Error("Enter the amount you received");
+  if (p.pickupInfo != null) o["Pickup Info"] = String(p.pickupInfo).trim().slice(0, 1000);
+  if (!pickupInfo_(o)) throw new Error("Add the pickup location and instructions first");
   Object.assign(o, {
     "Amount Paid": money_(amount), "Payment Method": String(p.method || "").slice(0, 40),
     "Paid At": now_(), Status: STATUS.CONFIRMED,
@@ -226,7 +229,7 @@ function statusFor_(id) {
     due: o["Amount Due"], balance: o["Balance At Pickup"], paid: o["Amount Paid"],
   };
   if (o.Status === STATUS.PENDING) { view.payLink = o["Payment Link"]; view.cashApp = SETTINGS.CASH_APP; }
-  if (o.Status === STATUS.CONFIRMED) view.pickupInfo = SETTINGS.PICKUP_INFO;
+  if (o.Status === STATUS.CONFIRMED) view.pickupInfo = pickupInfo_(o);
   return { order: view };
 }
 
@@ -270,7 +273,7 @@ function paymentStatus_(o) {
 }
 function pickup_(o) {
   return "<p><b>Pickup:</b> " + esc_(prettyDate_(o["Pickup Date"]) + (o["Pickup Time"] ? " at " + o["Pickup Time"] : "")) +
-    "<br>" + esc_(SETTINGS.PICKUP_INFO) + "</p>";
+    "<br>" + esc_(pickupInfo_(o)).replace(/\n/g, "<br>") + "</p>";
 }
 function payButtons_(o) {
   return (o["Payment Link"] ? button_(o["Payment Link"], "Pay " + o["Amount Due"] + " securely") : "") +
@@ -299,7 +302,7 @@ function smsConfirm_(o) {
   return "Hi " + first_(o) + "! Payment received, your order " + o.ID + " is CONFIRMED 🎉\n" + o.Items +
     "\nPickup: " + prettyDate_(o["Pickup Date"]) + (o["Pickup Time"] ? " at " + o["Pickup Time"] : "") +
     "\n" + (bal > 0 ? "Deposit paid: " + o["Amount Paid"] + ". Balance due at pickup: " + o["Balance At Pickup"] : "Paid in full: " + o["Amount Paid"]) +
-    "\n" + SETTINGS.PICKUP_INFO + "\nThank you ♡ Mone'T";
+    "\n" + pickupInfo_(o) + "\nThank you ♡ Mone'T";
 }
 
 // ----- Sheet helpers -----
@@ -328,6 +331,7 @@ function save_(o) {
 }
 
 // ----- Small helpers -----
+function pickupInfo_(o) { return String(o["Pickup Info"] || SETTINGS.PICKUP_INFO || "").trim(); }
 function plan_(total, custom) {
   const deposit = custom || total >= SETTINGS.FULL_PAY_UNDER;
   const due = deposit ? round_(total * SETTINGS.DEPOSIT_PERCENT / 100) : total;
