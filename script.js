@@ -58,16 +58,38 @@ PRODUCTS.brownie.flavors.forEach(([s, n]) => {
 const miniGrid = $('[data-menu="minicakes"]');
 FLAVORS.forEach(([s, n]) => miniGrid.append(card("mini", s, n)));
 
+// ----- Thanksgiving specials -----
+// Shown through the end of HOLIDAY.ends (local time), then the section, nav link and order options disappear.
+const holidayEnd = new Date(HOLIDAY.ends + "T00:00");
+holidayEnd.setDate(holidayEnd.getDate() + 1); // midnight after the last day
+const holidayOn = new Date() < holidayEnd;
+const OTHER_FLAVOR = [CUSTOM[0], "Other flavor (+$5, see notes)"];
+if (!holidayOn) {
+  document.querySelectorAll("[data-holiday]").forEach((el) => el.remove());
+} else {
+  document.querySelectorAll(".holiday-item select[data-flavors]").forEach((sel) => {
+    [...HOLIDAY_FLAVORS, OTHER_FLAVOR].forEach(([s, n]) => sel.add(new Option(n, s)));
+  });
+  $("#thanksgiving").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-add]");
+    if (!b) return;
+    const flavor = b.closest(".holiday-item").querySelector("select").value;
+    addToCart(b.dataset.add, flavor);
+    if (flavor === CUSTOM[0]) toast("Added ♡ Tell Mone'T your flavor in the order notes");
+  });
+}
+
 // ----- Cart -----
 let cart = [];
 try { cart = JSON.parse(localStorage.getItem("caked-cart")) || []; } catch {}
+cart = cart.filter((l) => PRODUCTS[l.p] && (holidayOn || !PRODUCTS[l.p].holiday)); // drop specials once they end
 const save = () => { try { localStorage.setItem("caked-cart", JSON.stringify(cart)); } catch {} };
 
 function addToCart(product, flavor, qty = 1) {
   const line = cart.find((l) => l.p === product && l.f === flavor);
   if (line) line.q += qty; else cart.push({ p: product, f: flavor, q: qty });
   renderCart();
-  toast(`Added ${qty} ${flavorName(product, flavor)} ${PRODUCTS[product].short}${qty > 1 ? "s" : ""} ♡`);
+  toast(`Added ${qty} ${flavorName(product, flavor)} ${shortName(product, qty)} ♡`);
 }
 
 function totals() {
@@ -116,11 +138,13 @@ document.addEventListener("click", (e) => {
 
 // Add row selects
 const itemSel = $("#addItem"), flavorSel = $("#addFlavor");
-Object.entries(PRODUCTS).forEach(([k, p]) => itemSel.add(new Option(p.label, k)));
+Object.entries(PRODUCTS).forEach(([k, p]) => { if (!p.holiday || holidayOn) itemSel.add(new Option(p.label, k)); });
 function fillFlavors() {
   flavorSel.innerHTML = "";
-  const list = [...PRODUCTS[itemSel.value].flavors];
-  if (itemSel.value === "cupcake" || itemSel.value === "mini") list.push(CUSTOM);
+  const p = PRODUCTS[itemSel.value];
+  const list = [...p.flavors];
+  if (p.holiday) list.push(OTHER_FLAVOR);
+  else if (itemSel.value === "cupcake" || itemSel.value === "mini") list.push(CUSTOM);
   list.forEach(([s, n]) => flavorSel.add(new Option(n, s)));
 }
 itemSel.addEventListener("change", fillFlavors);

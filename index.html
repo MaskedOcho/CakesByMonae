@@ -15,6 +15,7 @@
   <header class="nav">
     <a href="#top" class="nav-logo"><img src="assets/logo.png" alt="Cake'd by Mone'T" /></a>
     <nav>
+      <a href="#thanksgiving" class="nav-holiday" data-holiday>Thanksgiving</a>
       <a href="#cupcakes">Cupcakes</a>
       <a href="#brownies">Brownies</a>
       <a href="#minicakes">Mini Cakes</a>
@@ -53,6 +54,58 @@
     </div>
     <div class="drips bottom" aria-hidden="true"></div>
   </section>
+
+  <!-- THANKSGIVING SPECIALS: hides itself after HOLIDAY.ends in menu.js. A div, not a section, so the
+       menu sections' alternating backgrounds don't shift. -->
+  <div class="holiday" id="thanksgiving" data-holiday role="region" aria-labelledby="holidayTitle">
+    <span class="side-script left">Grateful<br />&amp; Sweet ♡</span>
+    <span class="side-script right">Save Room<br />for Dessert ♡</span>
+    <div class="section-head">
+      <h2 class="neon-script" id="holidayTitle">Thanksgiving</h2>
+      <p class="banner">Holiday Specials</p>
+    </div>
+
+    <div class="holiday-wrap">
+      <a class="holiday-flyer" href="assets/flyer-thanksgiving.jpg" target="_blank" rel="noopener">
+        <img src="assets/flyer-thanksgiving.jpg" alt="Cake'd by Mone'T Thanksgiving holiday specials flyer: 8-inch cakes $35, bundt cakes $25, cupcakes 6 for $15 or 12 for $28." loading="lazy" />
+      </a>
+
+      <div class="holiday-menu">
+        <article class="holiday-item">
+          <img src="assets/holiday-cake.jpg" alt="Caramel pecan 8-inch layer cake" loading="lazy" />
+          <div>
+            <h3>8-Inch Cakes</h3>
+            <p class="holiday-price">$35</p>
+            <select data-flavors aria-label="8-inch cake flavor"></select>
+            <div class="holiday-btns"><button type="button" class="btn btn-small" data-add="hCake">+ Add</button></div>
+          </div>
+        </article>
+        <article class="holiday-item">
+          <img src="assets/holiday-bundt.jpg" alt="Glazed bundt cake topped with pecans" loading="lazy" />
+          <div>
+            <h3>Bundt Cakes</h3>
+            <p class="holiday-price">$25</p>
+            <select data-flavors aria-label="Bundt cake flavor"></select>
+            <div class="holiday-btns"><button type="button" class="btn btn-small" data-add="hBundt">+ Add</button></div>
+          </div>
+        </article>
+        <article class="holiday-item">
+          <img src="assets/holiday-cupcakes.jpg" alt="Cupcakes with swirled cream cheese frosting" loading="lazy" />
+          <div>
+            <h3>Cupcakes</h3>
+            <p class="holiday-price">6 for $15 <span>|</span> 12 for $28</p>
+            <select data-flavors aria-label="Cupcake flavor"></select>
+            <div class="holiday-btns">
+              <button type="button" class="btn btn-small" data-add="hCup6">+ 6 for $15</button>
+              <button type="button" class="btn btn-small" data-add="hCup12">+ 12 for $28</button>
+            </div>
+          </div>
+        </article>
+        <p class="holiday-flavors"><b>Available flavors:</b> Caramel Pecan ♡ Red Velvet ♡ Sweet Potato ♡ Banana Pudding ♡ Biscoff</p>
+        <p class="holiday-extra">Any other flavor of your choice: <b>+$5</b>. Pick “Other flavor” and tell Mone'T in your order notes ♡</p>
+      </div>
+    </div>
+  </div>
 
   <section class="menu-section" id="cupcakes">
     <span class="side-script left">Good Cupcakes<br />Better Days ♡</span>

@@ -183,6 +183,40 @@ section { position: relative; padding: clamp(4rem, 9vw, 7rem) clamp(1rem, 4vw, 3
 .flavor.any p { font-weight: 900; text-transform: uppercase; line-height: 1.2; }
 .flavor.any a { color: var(--pink-hot); font-weight: 800; }
 
+/* Thanksgiving specials (autumn take on the neon look) */
+.holiday { --c: var(--orange); --gold: #ffc56b; position: relative; padding: clamp(4rem, 9vw, 7rem) clamp(1rem, 4vw, 3rem);
+  background: radial-gradient(ellipse at 50% 0, #3a1608 0%, #1a0a10 45%, var(--bg) 80%); }
+.holiday .neon-script { text-shadow: 0 0 6px #fff, 0 0 14px var(--gold), 0 0 30px var(--orange), 0 0 60px #ff5a1f; }
+.holiday .banner { background: var(--gold); color: #3a1200; }
+.holiday .side-script { color: var(--gold); text-shadow: 0 0 12px rgba(255,154,60,.6); }
+.holiday-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: clamp(1.5rem, 3vw, 2.5rem); max-width: 1150px; margin: 0 auto; align-items: start; position: relative; z-index: 1; }
+@media (max-width: 860px) { .holiday-wrap { grid-template-columns: 1fr; } }
+.holiday-flyer { display: block; border-radius: 22px; overflow: hidden; border: 3px solid var(--c); box-shadow: 0 0 22px var(--c); max-width: 520px; margin: 0 auto; transition: transform .25s; }
+.holiday-flyer:hover { transform: rotate(-.6deg) scale(1.01); }
+.holiday-menu { display: grid; gap: 1rem; }
+.holiday-item { display: grid; grid-template-columns: 130px 1fr; gap: 1rem; align-items: center; background: var(--bg-2); border: 2px solid var(--c); border-radius: var(--radius);
+  padding: .8rem; box-shadow: 0 0 14px color-mix(in srgb, var(--c) 55%, transparent); }
+.holiday-item img { width: 130px; height: 110px; object-fit: cover; border-radius: 12px; }
+.holiday-item h3 { font-family: var(--hand); font-weight: 400; font-size: 2rem; line-height: 1; color: var(--gold); text-shadow: 0 0 10px rgba(255,154,60,.6); }
+.holiday-price { font-weight: 900; font-size: 1.4rem; margin: .2rem 0 .5rem; }
+.holiday-price span { color: var(--orange); margin: 0 .3rem; }
+.holiday-item select { font: inherit; font-size: .9rem; padding: .5rem .7rem; border: 1.5px solid #5c3a2a; border-radius: 10px; background: #0d0714; color: #fff; width: 100%; max-width: 260px; }
+.holiday-item select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(255,197,107,.3); }
+.holiday-btns { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
+.holiday .btn { background: var(--orange); border-color: var(--orange); color: #2a0e00; box-shadow: 0 0 14px rgba(255,154,60,.55); }
+.holiday .btn:hover { box-shadow: 0 0 26px rgba(255,154,60,.9); }
+.holiday-flavors, .holiday-extra { text-align: center; font-weight: 700; }
+.holiday-flavors b { color: var(--gold); }
+.holiday-extra { color: var(--muted); font-size: .95rem; }
+.holiday-extra b { color: var(--gold); }
+@media (max-width: 480px) {
+  .holiday-item { grid-template-columns: 96px 1fr; gap: .8rem; }
+  .holiday-item img { width: 96px; height: 96px; }
+  .holiday-item h3 { font-size: 1.7rem; }
+}
+.nav nav a.nav-holiday { color: var(--gold, #ffc56b); }
+@media (max-width: 720px) { .nav nav a.nav-holiday { display: inline; font-size: .8rem; } }
+
 /* Custom orders band */
 .custom { text-align: center; background: linear-gradient(135deg, #2b0730, #160a2a 50%, #06202a); border-block: 2px solid var(--pink); box-shadow: 0 0 30px rgba(255,47,180,.35); }
 .custom-inner { max-width: 720px; margin: 0 auto; display: grid; gap: 1rem; justify-items: center; }

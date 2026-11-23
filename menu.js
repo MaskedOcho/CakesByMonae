@@ -24,6 +24,13 @@ const FLAVORS = [
   ["lemon", "Lemon"], ["key-lime", "Key Lime"],
 ];
 
+// Thanksgiving specials: the section and its items hide themselves on the day after `ends`
+const HOLIDAY = { ends: "2026-11-26" };
+const HOLIDAY_FLAVORS = [
+  ["caramel-pecan", "Caramel Pecan"], ["red-velvet", "Red Velvet"], ["sweet-potato", "Sweet Potato"],
+  ["banana-pudding", "Banana Pudding"], ["biscoff", "Biscoff"],
+];
+
 // Each product: bundle price tiers [quantity, price], biggest first
 const PRODUCTS = {
   cupcake: { label: "Cupcakes", short: "Cupcake", tiers: [[12, 36], [6, 18], [1, 3]], img: (f) => `assets/cupcake-${f}.jpg`,
@@ -34,6 +41,16 @@ const PRODUCTS = {
              flavors: [["cookies-cream", "Cookies & Cream"], ["biscoff", "Biscoff"]] },
   mini:    { label: "Mini Cakes", short: "Mini Cake", tiers: [[12, 60], [6, 35], [1, 5]], img: (f) => `assets/mini-${f}.jpg`,
              flavors: FLAVORS },
+  // Thanksgiving specials. They stay listed here after the special ends so older review links still work;
+  // HOLIDAY.ends only hides them on the site.
+  hCake:   { label: "Thanksgiving 8-Inch Cake", short: "8-Inch Cake", tiers: [[1, 35]], img: () => "assets/holiday-cake.jpg",
+             flavors: HOLIDAY_FLAVORS, holiday: true, customFee: 5 },
+  hBundt:  { label: "Thanksgiving Bundt Cake", short: "Bundt Cake", tiers: [[1, 25]], img: () => "assets/holiday-bundt.jpg",
+             flavors: HOLIDAY_FLAVORS, holiday: true, customFee: 5 },
+  hCup6:   { label: "Thanksgiving Cupcakes (6)", short: "Half Dozen Cupcakes", plural: "Half Dozens of Cupcakes", tiers: [[1, 15]], img: () => "assets/holiday-cupcakes.jpg",
+             flavors: HOLIDAY_FLAVORS, holiday: true, customFee: 5 },
+  hCup12:  { label: "Thanksgiving Cupcakes (12)", short: "Dozen Cupcakes", plural: "Dozens of Cupcakes", tiers: [[1, 28]], img: () => "assets/holiday-cupcakes.jpg",
+             flavors: HOLIDAY_FLAVORS, holiday: true, customFee: 5 },
 };
 const CUSTOM = ["custom", "Custom flavor (see notes)"];
 
@@ -61,10 +78,13 @@ function cartTotal(lines) {
   lines.forEach((l) => (counts[l.p] = (counts[l.p] || 0) + l.q));
   let sum = 0;
   for (const [p, n] of Object.entries(counts)) if (PRODUCTS[p]) sum += bestPrice(PRODUCTS[p].tiers, n);
+  // Specials charge extra for a flavor that's not listed
+  lines.forEach((l) => { if (l.f === CUSTOM[0] && PRODUCTS[l.p]?.customFee) sum += PRODUCTS[l.p].customFee * l.q; });
   return sum;
 }
 
-const lineText = (l) => `${l.q} × ${flavorName(l.p, l.f)} ${PRODUCTS[l.p].short}${l.q > 1 ? "s" : ""}`;
+const shortName = (p, q) => (q > 1 ? PRODUCTS[p].plural || `${PRODUCTS[p].short}s` : PRODUCTS[p].short);
+const lineText = (l) => `${l.q} × ${flavorName(l.p, l.f)} ${shortName(l.p, l.q)}`;
 
 // "14:30" -> "2:30 PM"
 function prettyTime(t) {
