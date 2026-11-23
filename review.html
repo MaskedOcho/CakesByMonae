@@ -37,6 +37,9 @@
     .decline { border-color: #4a2a5c; box-shadow: none; }
     .btn-dim { background: transparent; border-color: #8a6a9c; box-shadow: none; }
     .error { text-align: center; color: var(--muted); }
+    .dep-flag { font-weight: 800; border-radius: 12px; padding: .6rem 1rem; text-align: center; background: var(--lime); color: #0a2000; }
+    .dep-flag.bad { background: var(--pink); color: #fff; }
+    [hidden] { display: none !important; }
     .rush-flag { background: var(--yellow); color: #2a2000; font-weight: 800; border-radius: 12px; padding: .6rem 1rem; text-align: center; margin-bottom: 1.5rem; }
     @media (max-width: 560px) { .sums { grid-template-columns: 1fr; } }
   </style>
@@ -52,6 +55,7 @@
 
     <div id="order" hidden>
       <p class="rush-flag" id="rushFlag" hidden></p>
+      <p class="dep-flag" id="depFlag" hidden></p>
       <section class="form">
         <h2>Customer</h2>
         <dl>
@@ -77,13 +81,21 @@
             <div class="sums">
               <label>Order price ($)<input id="finalTotal" type="number" min="0" step="0.01" /></label>
               <label id="rushFeeWrap" hidden>Rush fee ($)<input id="rushFee" type="number" min="0" step="0.01" value="0" /></label>
-              <label>Deposit (%)<input id="depositPct" type="number" min="0" max="100" step="1" /></label>
+              <label class="manual">Deposit (%)<input id="depositPct" type="number" min="0" max="100" step="1" /></label>
             </div>
             <div class="money-row"><span>Final total</span><span id="totalAmt"></span></div>
-            <div class="money-row"><span>Deposit due now</span><strong id="depositAmt"></strong></div>
-            <div class="money-row"><span>Due at pickup</span><span id="balanceAmt"></span></div>
+            <div class="money-row"><span id="depositLabel">Deposit due now</span><strong id="depositAmt"></strong></div>
+            <div class="money-row"><span id="balanceLabel">Due at pickup</span><span id="balanceAmt"></span></div>
           </div>
-          <div class="step">
+          <div class="step auto" hidden>
+            <b>Create the balance payment link</b>
+            <small>Makes a one-time Stripe link for the remaining balance and pastes it below. Your passcode is remembered on this device.</small>
+            <div class="row">
+              <input id="adminKey" type="password" placeholder="Passcode" autocomplete="current-password" style="flex:1 1 160px" />
+              <button class="btn" type="button" id="makeBalance">Create balance link</button>
+            </div>
+          </div>
+          <div class="step manual">
             <b>Make a Stripe payment link for the deposit</b>
             <small>Opens your Stripe dashboard. Create a payment link (or invoice) for the deposit amount, then copy its link.</small>
             <div class="row">
@@ -108,6 +120,9 @@
 
       <section class="form decline" style="margin-top:1.5rem">
         <h2>Or decline</h2>
+        <div class="row auto" hidden style="margin-bottom:.8rem">
+          <button class="btn" type="button" id="refundBtn">Refund the deposit in full</button>
+        </div>
         <textarea id="declineMsg"></textarea>
         <div class="row" style="margin-top:.8rem">
           <button class="btn btn-dim" type="button" data-send="decline" data-via="sms">Text decline</button>
@@ -123,24 +138,39 @@
     let o;
     try { o = decodeOrder(location.hash.slice(1)); } catch {}
 
+    const toCents = (n) => (Math.round(n * 100) / 100).toFixed(2);
+    const api = (path, opts) => fetch(`${CONFIG.checkoutUrl}${path}`, opts).then(async (r) => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "Couldn't reach the checkout helper");
+      return j;
+    });
+
     if (!o || !o.n) {
       $("#missing").hidden = false;
+    } else if (o.s && CONFIG.checkoutUrl) {
+      // Deposit order: load it from Stripe so what she sees is what was actually paid for
+      api(`/order?session=${encodeURIComponent(o.s)}`)
+        .then((j) => show(j.paid ? { ...j.order, s: o.s } : o, j))
+        .catch((e) => show(o, { error: e.message }));
     } else {
+      show(o, null);
+    }
+
+    // dep: null = no deposit (custom request), else { paid, deposit, refunded, code } or { error }
+    function show(o, dep) {
       $("#order").hidden = false;
+      const paid = Boolean(dep?.paid);
       const lines = (o.i || []).filter(([p]) => PRODUCTS[p]).map(([p, f, q]) => ({ p, f, q: Math.max(1, q | 0) }));
       const first = o.n.split(" ")[0];
       const dateText = new Date(o.d + "T12:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
       const pickup = `${dateText}${o.t ? ` at ${prettyTime(o.t)}` : ""}`;
       const estimate = cartTotal(lines); // recomputed from the menu, not taken from the link
-      const toCents = (n) => (Math.round(n * 100) / 100).toFixed(2);
-
       $("#cName").textContent = o.n;
       $("#cPhone").textContent = o.ph;
       $("#cPhone").href = `tel:${o.ph.replace(/[^\d+]/g, "")}`;
       $("#cEmail").textContent = o.e;
       $("#cEmail").href = `mailto:${o.e}`;
       $("#cPickup").textContent = pickup;
-
       lines.forEach((l) => {
         const li = document.createElement("li");
         li.innerHTML = `${l.f === CUSTOM[0] ? "" : `<img src="${PRODUCTS[l.p].img(l.f)}" alt="" />`}<span class="name"></span>`;
@@ -150,23 +180,39 @@
       if (!lines.length) $("#items").innerHTML = `<li class="empty">Custom order, see notes</li>`;
       if (o.no) { $("#notes").hidden = false; $("#notes").textContent = o.no; }
       $("#estimate").textContent = money(estimate);
-
       $("#finalTotal").value = estimate;
       if (o.r) {
         $("#rushFlag").hidden = false;
         $("#rushFlag").textContent = `Rush order: requested with under ${CONFIG.noticeDays} days' notice`;
         $("#rushFeeWrap").hidden = false;
       }
-      $("#depositPct").value = CONFIG.depositPercent;
 
+      // Deposit status
+      const flag = $("#depFlag");
+      if (dep) {
+        flag.hidden = false;
+        if (dep.error) { flag.classList.add("bad"); flag.textContent = `Couldn't check the deposit: ${dep.error}. Check Stripe before accepting.`; }
+        else if (!paid) { flag.classList.add("bad"); flag.textContent = "⚠ No deposit was paid for this order. Check Stripe before accepting."; }
+        else if (dep.refunded) { flag.classList.add("bad"); flag.textContent = `Deposit refunded ($${toCents(dep.refunded)}), order ${dep.code}`; }
+        else flag.textContent = `✓ Deposit paid: $${toCents(dep.deposit)} (order ${dep.code}, verified with Stripe)`;
+      }
+      document.querySelectorAll(".manual").forEach((el) => (el.hidden = paid));
+      document.querySelectorAll(".auto").forEach((el) => (el.hidden = !paid));
+      if (paid) {
+        $("#depositLabel").textContent = "Deposit already paid";
+        $("#balanceLabel").textContent = "Remaining balance";
+        $("#payLink").placeholder = "Tap Create balance link above";
+        try { $("#adminKey").value = localStorage.getItem("caked-admin") || ""; } catch {}
+      }
+
+      $("#depositPct").value = CONFIG.depositPercent;
       const itemList = lines.map((l) => `• ${lineText(l)}`).join("\n") || "• Custom order";
       const amounts = () => {
         const fee = o.r ? Math.max(0, +$("#rushFee").value || 0) : 0;
         const total = Math.max(0, +$("#finalTotal").value || 0) + fee;
-        const deposit = total * Math.min(100, Math.max(0, +$("#depositPct").value || 0)) / 100;
-        return { fee, total, deposit, balance: total - deposit };
+        const deposit = paid ? dep.deposit : total * Math.min(100, Math.max(0, +$("#depositPct").value || 0)) / 100;
+        return { fee, total, deposit, balance: Math.max(0, total - deposit) };
       };
-
       // Keep the message in sync with the price fields, but don't clobber her own edits
       let approveEdited = false;
       $("#approveMsg").addEventListener("input", () => (approveEdited = true));
@@ -180,7 +226,21 @@
           if (link !== "[payment link]") $("#approveMsg").value = $("#approveMsg").value.replace("[payment link]", link);
           return;
         }
-        $("#approveMsg").value = [
+        $("#approveMsg").value = (paid ? [
+          `Hi ${first}! Your Cake'd By Mone'T order ${dep.code} is CONFIRMED 🎉`,
+          "",
+          itemList,
+          `Pickup: ${pickup}`,
+          "",
+          fee > 0 ? `Rush fee: $${toCents(fee)}` : "",
+          `Total: $${toCents(total)}`,
+          `Deposit received: $${toCents(deposit)} ✓`,
+          `Remaining balance: $${toCents(balance)}`,
+          balance > 0 ? `Pay your balance securely here before pickup: ${link}` : "",
+          "Your deposit is non-refundable now that your order is confirmed.",
+          "",
+          "Thank you so much ♡ Mone'T",
+        ] : [
           `Hi ${first}! Your Cake'd By Mone'T order is APPROVED 🎉`,
           "",
           itemList,
@@ -194,12 +254,55 @@
           balance > 0 ? `The remaining $${toCents(balance)} is due at pickup.` : "",
           "",
           "Thank you so much ♡ Mone'T",
-        ].filter((s, i, a) => s || a[i - 1]).join("\n");
+        ]).filter((s, i, a) => s || a[i - 1]).join("\n");
       }
       ["#finalTotal", "#rushFee", "#depositPct", "#payLink"].forEach((s) => $(s).addEventListener("input", refresh));
       refresh();
 
-      $("#declineMsg").value = `Hi ${first}, thank you so much for your order request! Unfortunately I'm not able to take this one for ${dateText}. I'd love to bake for you another time ♡ Mone'T`;
+      const declineText = (refunded) => `Hi ${first}, thank you so much for your order request! Unfortunately I'm not able to take this one for ${dateText}.${
+        refunded ? ` Your $${toCents(refunded)} deposit has been refunded in full. It can take 5 to 10 business days to show up on your card.` : ""} I'd love to bake for you another time ♡ Mone'T`;
+      $("#declineMsg").value = declineText(paid ? dep.refunded : 0);
+
+      const adminKey = () => {
+        const k = $("#adminKey").value.trim();
+        if (!k) { toast("Enter your passcode first"); $("#adminKey").focus(); }
+        return k;
+      };
+      const post = (path, data) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+
+      $("#makeBalance").addEventListener("click", async (e) => {
+        const key = adminKey();
+        if (!key) return;
+        const { balance } = amounts();
+        if (balance < 0.5) { toast("No balance left to collect"); return; }
+        e.target.disabled = true;
+        try {
+          const r = await post("/balance", { session: o.s, amount: Math.round(balance * 100) / 100, key });
+          try { localStorage.setItem("caked-admin", key); } catch {}
+          $("#payLink").value = r.url;
+          refresh();
+          toast(`Balance link for $${toCents(balance)} created ♡`);
+        } catch (er) { toast(er.message); }
+        e.target.disabled = false;
+      });
+
+      $("#refundBtn").addEventListener("click", async (e) => {
+        if (!confirm(`Refund the full $${toCents(dep.deposit)} deposit to ${o.n}?`)) return;
+        const key = adminKey();
+        if (!key) return;
+        e.target.disabled = true;
+        try {
+          const r = await post("/refund", { session: o.s, key });
+          try { localStorage.setItem("caked-admin", key); } catch {}
+          $("#declineMsg").value = declineText(r.refunded);
+          flag.classList.add("bad");
+          flag.textContent = `Deposit refunded ($${toCents(r.refunded)}), order ${dep.code}`;
+          e.target.textContent = "Deposit refunded ✓";
+          toast("Refunded ♡ Now send the decline message");
+          return;
+        } catch (er) { toast(er.message); }
+        e.target.disabled = false;
+      });
 
       $("#copyDesc").addEventListener("click", async () => {
         const { deposit } = amounts();
@@ -209,9 +312,11 @@
 
       document.querySelectorAll("[data-send]").forEach((b) => b.addEventListener("click", () => {
         const approve = b.dataset.send === "approve";
-        if (approve && !$("#payLink").value.trim() && !confirm("No payment link pasted yet. Send anyway?")) return;
+        if (approve && !$("#payLink").value.trim() && amounts().balance > 0 && !confirm("No payment link yet. Send anyway?")) return;
+        if (!approve && paid && !dep.refunded && $("#refundBtn").textContent !== "Deposit refunded ✓"
+            && !confirm("The deposit hasn't been refunded yet. Send the decline anyway?")) return;
         const body = (approve ? $("#approveMsg") : $("#declineMsg")).value;
-        const subject = approve ? "Your Cake'd By Mone'T order is approved! 🎉" : "Your Cake'd By Mone'T order request";
+        const subject = approve ? (paid ? "Your Cake'd By Mone'T order is confirmed! 🎉" : "Your Cake'd By Mone'T order is approved! 🎉") : "Your Cake'd By Mone'T order request";
         location.href = b.dataset.via === "sms"
           ? `sms:${o.ph.replace(/[^\d+]/g, "")}?&body=${encodeURIComponent(body)}`
           : `mailto:${o.e}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -224,7 +329,7 @@
       el.textContent = t;
       el.classList.add("show");
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
     }
   </script>
 </body>

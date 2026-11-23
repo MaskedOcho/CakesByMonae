@@ -1,0 +1,16 @@
+name = "cakedbymonet-checkout"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[build]
+command = "node build.mjs"
+
+[vars]
+SITE_URL = "https://cakedbymonet.com"
+# Pages allowed to call this worker (comma separated)
+ALLOWED_ORIGINS = "https://cakedbymonet.com,https://www.cakedbymonet.com"
+TIME_ZONE = "America/New_York"
+
+# Secrets (set with `npx wrangler secret put <NAME>`, never put them in this file):
+#   STRIPE_KEY  Mone'T's restricted Stripe key (rk_live_...)
+#   ADMIN_KEY   passcode Mone'T types on the review page to make balance links and refunds

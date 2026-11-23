@@ -117,6 +117,7 @@ function renderCart() {
   nc.hidden = !count;
   nc.textContent = count;
   save();
+  updateSubmit();
 }
 
 $("#cart").addEventListener("click", (e) => {
@@ -157,9 +158,13 @@ $("#addBtn").addEventListener("click", () => {
 
 renderCart();
 
-// ----- Booking: request -> Mone'T approves -> Stripe payment link -----
+// ----- Booking -----
+// With CONFIG.checkoutUrl set: order -> customer pays the deposit on Stripe -> back here -> FormNX request
+//   -> Mone'T accepts (sends a balance link) or declines (refunds the deposit) from review.html.
+// Without it, or for a custom-only request with nothing in the cart: a free request, no deposit.
 const orderForm = $("#orderForm");
 const msg = $("#formMsg");
+const submitBtn = orderForm.querySelector('[type="submit"]');
 const dateInput = orderForm.elements.date;
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -169,8 +174,14 @@ noRush.setDate(noRush.getDate() + CONFIG.noticeDays);
 dateInput.min = today;
 const isRush = (date) => date < isoDate(noRush);
 const rushText = `Rush order (under ${CONFIG.noticeDays} days' notice)`;
-$("#noticeNote").textContent = `Mone'T reviews every request before anything is charged, then texts or emails you a secure Stripe link for your ${CONFIG.depositPercent}% deposit. Deposits are non-refundable.`;
-$("#rushNote").textContent = `${rushText}: Mone'T may add a rush fee and will confirm your final price before you pay ♡`;
+const payOn = Boolean(CONFIG.checkoutUrl);
+$("#noticeNote").textContent = payOn
+  ? `To send your order you'll pay a ${CONFIG.depositPercent}% deposit by card through Stripe. If Mone'T can't take your order, your deposit is refunded in full. Once she accepts, she'll send you a link for the remaining balance. Deposits are non-refundable once your order is accepted.`
+  : `Mone'T reviews every request before anything is charged, then texts or emails you a secure Stripe link for your ${CONFIG.depositPercent}% deposit. Deposits are non-refundable.`;
+$("#rushNote").textContent = payOn
+  ? `${rushText}: Mone'T may add a rush fee to your remaining balance ♡`
+  : `${rushText}: Mone'T may add a rush fee and will confirm your final price before you pay ♡`;
+if (payOn) $("#textBtn").style.display = "none"; // every menu order goes through the deposit
 dateInput.addEventListener("input", () => {
   $("#rushNote").hidden = !dateInput.value || !isRush(dateInput.value);
 });
@@ -193,41 +204,106 @@ function problem(d, full = true) {
   return "";
 }
 
+// Compact order, the same shape the review link and the checkout helper use
+const toOrder = (d) => ({ n: d.name, ph: d.phone, e: d.email, d: d.date, t: d.time, no: d.notes, r: isRush(d.date) ? 1 : 0, i: cart.map((l) => [l.p, l.f, l.q]) });
+
 // FormNX link with everything filled in, plus a private review link for Mone'T
-function requestLink(d) {
+function requestLink(o, paid) {
   const F = CONFIG.formFields;
+  const lines = o.i.map(([p, f, q]) => ({ p, f, q }));
   const review = new URL("review.html", location.href);
-  review.hash = encodeOrder({ n: d.name, ph: d.phone, e: d.email, d: d.date, t: d.time, no: d.notes, r: isRush(d.date) ? 1 : 0, i: cart.map((l) => [l.p, l.f, l.q]) });
+  review.hash = encodeOrder(paid ? { ...o, s: paid.session } : o);
+  const details = [
+    ...(paid ? [`DEPOSIT PAID: ${dollars(paid.deposit)} (order ${paid.code})`] : []),
+    ...(o.r ? [rushText] : []),
+    ...(lines.length ? lines.map(lineText) : ["Custom order (see notes)"]),
+  ].join("\n");
   const url = new URL(CONFIG.formUrl);
   const params = {
-    [F.name]: d.name, [F.phone]: d.phone, [F.email]: d.email, [F.date]: d.date, [F.time]: prettyTime(d.time),
-    [F.details]: [...(isRush(d.date) ? [rushText] : []), ...(cart.length ? cart.map(lineText) : ["Custom order (see notes)"])].join("\n"),
-    [F.total]: totals().sum, [F.notes]: d.notes,
-    [F.review]: review.href,
+    [F.name]: o.n, [F.phone]: o.ph, [F.email]: o.e, [F.date]: o.d, [F.time]: prettyTime(o.t),
+    [F.details]: details, [F.total]: cartTotal(lines), [F.notes]: o.no, [F.review]: review.href,
   };
-  for (const [k, v] of Object.entries(params)) if (k && v !== "") url.searchParams.set(k, v);
+  for (const [k, v] of Object.entries(params)) if (k && v !== "" && v != null) url.searchParams.set(k, v);
   return url.href;
 }
 
 const dialog = $("#requestDialog");
-orderForm.addEventListener("submit", (e) => {
+let paidCode = "";
+function openRequest(link, title = "Almost done! Check your info and tap Submit ♡") {
+  $("#requestTitle").textContent = title;
+  $("#requestFrame").src = link;
+  $("#requestTab").href = link;
+  dialog.showModal();
+}
+$("#requestClose").addEventListener("click", () => dialog.close());
+dialog.addEventListener("close", () => {
+  $("#requestFrame").src = "about:blank";
+  if (!paidCode) {
+    msg.textContent = "Once you tap Submit on the form, Mone'T will review your request and reach out ♡";
+    return;
+  }
+  msg.innerHTML = `Thank you! Mone'T will review order <b>${paidCode}</b> and send your confirmation ♡<br />Didn't tap Submit? <button type="button" class="link-btn" id="reopenBtn">Reopen the form</button>`;
+  $("#reopenBtn").addEventListener("click", () => {
+    $("#requestFrame").src = $("#requestTab").href;
+    dialog.showModal();
+  });
+});
+
+orderForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const d = readForm();
   const err = problem(d);
   if (err) { msg.textContent = err; return; }
   msg.textContent = "";
-  const link = requestLink(d);
-  $("#requestFrame").src = link;
-  $("#requestTab").href = link;
-  dialog.showModal();
-});
-$("#requestClose").addEventListener("click", () => dialog.close());
-dialog.addEventListener("close", () => {
-  $("#requestFrame").src = "about:blank";
-  msg.textContent = "Once you tap Submit on the form, Mone'T will review your request and reach out ♡";
-});
+  const o = toOrder(d);
+  if (!payOn || !o.i.length) return openRequest(requestLink(o));
 
-// Prefer to text? Same order as a message
+  submitBtn.disabled = true;
+  msg.textContent = "Taking you to secure checkout…";
+  try {
+    const res = await fetch(`${CONFIG.checkoutUrl}/checkout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(o) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.url) throw new Error(j.error || "Checkout isn't available right now");
+    location.href = j.url;
+  } catch (er) {
+    msg.textContent = `${er.message}. Please try again, or call/text ${CONFIG.phoneDisplay} ♡`;
+    submitBtn.disabled = false;
+  }
+});
+addEventListener("pageshow", () => { submitBtn.disabled = false; }); // back from Stripe with the back button
+
+// Back from Stripe: confirm the deposit, then send the order to Mone'T
+const back = new URLSearchParams(location.search);
+if (back.get("canceled")) msg.textContent = "Checkout canceled. Your order wasn't sent and you weren't charged ♡";
+if (payOn && back.get("paid")) finishPaid(back.get("paid"));
+async function finishPaid(session) {
+  msg.textContent = "Confirming your deposit…";
+  try {
+    const res = await fetch(`${CONFIG.checkoutUrl}/order?session=${encodeURIComponent(session)}`);
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    if (!j.paid) {
+      msg.textContent = `We couldn't confirm your deposit yet. If you were charged, call/text ${CONFIG.phoneDisplay} ♡`;
+      return;
+    }
+    cart = [];
+    renderCart();
+    paidCode = j.code;
+    openRequest(requestLink(j.order, { session, code: j.code, deposit: j.deposit }),
+      `Deposit of ${dollars(j.deposit)} paid ✓ Last step: tap Submit to send order ${j.code} to Mone'T ♡`);
+  } catch {
+    msg.textContent = `We couldn't load your order. If you were charged, call/text ${CONFIG.phoneDisplay} ♡`;
+  }
+}
+
+// When deposits are on, the submit button shows the deposit amount (called from renderCart)
+function updateSubmit() {
+  const b = document.querySelector('#orderForm [type="submit"]');
+  if (!b || !CONFIG.checkoutUrl) return;
+  b.textContent = cart.length ? `Pay ${dollars(cartTotal(cart) * CONFIG.depositPercent / 100)} Deposit & Send Order ♡` : "Send Custom Request ♡";
+}
+
+// Prefer to text? Same order as a message (hidden when deposits are on)
 $("#textBtn").addEventListener("click", async () => {
   const d = readForm();
   const err = problem(d, false);

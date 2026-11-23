@@ -1,0 +1,4 @@
+checkout/menu.gen.mjs
+checkout/node_modules/
+checkout/.wrangler/
+checkout/.dev.vars

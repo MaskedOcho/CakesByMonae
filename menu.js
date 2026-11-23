@@ -5,7 +5,9 @@ const CONFIG = {
   instagram: "cakedbymonet", // Instagram handle without the @ (confirm exact spelling)
 
   // Booking
-  depositPercent: 50,  // deposit asked for once Mone'T approves
+  depositPercent: 50,  // deposit paid by card when the order is sent (refunded in full if Mone'T declines)
+  // Checkout helper (Cloudflare Worker in /checkout). Leave "" to go back to free requests with no deposit.
+  checkoutUrl: "",
   noticeDays: 3,       // anything sooner is a rush order and may get a rush fee
   closedDays: [],      // days she doesn't bake: 0 = Sun, 1 = Mon … 6 = Sat
   formUrl: "https://fill.formnx.com/f/cake-d-by-monet-71dt44",
@@ -56,6 +58,7 @@ const CUSTOM = ["custom", "Custom flavor (see notes)"];
 
 const $ = (s) => document.querySelector(s);
 const money = (n) => `$${n}`;
+const dollars = (n) => { const r = Math.round(n * 100) / 100; return Number.isInteger(r) ? `$${r}` : `$${r.toFixed(2)}`; };
 
 // Cheapest way to buy exactly n of a product using its bundle tiers
 function bestPrice(tiers, n) {
