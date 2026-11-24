@@ -7,7 +7,7 @@ const CONFIG = {
   // Booking
   depositPercent: 50,  // deposit paid by card when the order is sent (refunded in full if Mone'T declines)
   // Checkout helper (Cloudflare Worker in /checkout). Leave "" to go back to free requests with no deposit.
-  checkoutUrl: "",
+  checkoutUrl: "https://cakedbymonet-checkout.theochocollective.workers.dev",
   noticeDays: 3,       // anything sooner is a rush order and may get a rush fee
   closedDays: [],      // days she doesn't bake: 0 = Sun, 1 = Mon … 6 = Sat
   formUrl: "https://fill.formnx.com/f/cake-d-by-monet-71dt44",
